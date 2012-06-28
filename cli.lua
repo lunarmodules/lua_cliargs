@@ -93,8 +93,11 @@ function cli:add_opt(key, desc, ref, opts)
     -- name, val = name_val[1], name_val[#name_val]
   -- end
 
+  opts = opts or {}
   for _,default_opt in pairs({ "expanded_key", "value", "default" }) do
-    opts[default_opt] = opts[default_opt] or ""
+    if opts[default_opt] == nil then
+      opts[default_opt] = ""
+    end
   end
 
   table.insert(self.optional, { 
@@ -106,13 +109,13 @@ function cli:add_opt(key, desc, ref, opts)
     default = opts.default
   })
 
-  table.dump(self.optional[#self.optional], 1)
+  -- table.dump(self.optional[#self.optional], 1)
 end
 
 function cli:locate_entry(key)
   if key:find('--') == 1 and key:find('=') then
     key = split(key, '=')[1]
-    print("stripped key: " .. key)
+    -- print("stripped key: " .. key)
   end
 
   for _,entry in ipairs(self.optional) do
@@ -137,6 +140,7 @@ function cli:parse_args()
     return self:print_help()
   end
 
+  print("Received " .. #self.args .. " arguments, required: " .. #self.required)
 
   local args = {} -- returned set
 
@@ -182,13 +186,14 @@ function cli:parse_args()
 
         -- using the -option VALUE notation:
         if not uses_expanded then
-          if not #self.args < arg_idx+1 then
+          if #entry.value == 0 then
+            arg_val = true
+          elseif not (#self.args < arg_idx+1) then
             return self:error("missing argument value in '" .. entry.key .. " " .. entry.value .. "'")
+          else
+            arg_val = self.args[arg_idx+1]
+            skip = true
           end
-
-          arg_val = self.args[arg_idx+1]
-
-          skip = true
 
         -- using the --option=VALUE notation
         else 
@@ -268,7 +273,7 @@ function cli:print_help()
       end
 
       local separator = " "
-      if entry.expanded_key then
+      if #entry.expanded_key > 0 then
         arg_key = arg_key .. ", " .. entry.expanded_key
         separator = "="
       end
