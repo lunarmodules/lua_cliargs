@@ -94,3 +94,11 @@ test.lua: error: missing argument value in '-i FILE'; re-run with --help for usa
 >> lua test.lua /my_root -f
 test.lua: error: unknown option -f; re-run with --help for usage.
 ```
+
+## Reference
+
+A function reference was generated using [LunaDoc](http://jgm.github.com/lunamark/lunadoc.1.html) which can be found [here](http://lua-cliargs.docs.mxvt.net).
+
+## License
+
+I personally don't care what you do with the code. Whether you use it, extend it, or publish it under your own name, you got my blessing!
