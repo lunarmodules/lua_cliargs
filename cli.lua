@@ -1,5 +1,8 @@
 local cli = {}
 
+-- ------- --
+-- Helpers --
+-- ------- --
 local expand = function(str, size, fill)
   if not fill then fill = ' ' end
 
@@ -51,6 +54,9 @@ local delimit = function(str, size, pad)
   return out
 end
 
+-- -------- --
+-- CLI Main --
+-- -------- --
 function cli:new(name, required_args, optional_args)
   local o = {}
   setmetatable(o, { __index = self })
@@ -60,6 +66,8 @@ function cli:new(name, required_args, optional_args)
   o.required = required_args or {}
   o.optional = optional_args or {}
   o.args = arg
+
+  o.colsz = { 20, 45 }
 
   return o
 end
@@ -85,6 +93,9 @@ function table.dump(t, indent_level)
 end
 
 -- opts: { expanded_key = "--output", value_type="FILE", default="./file.txt" }
+function cli:add_flag(key, desc, ref)
+  return self:add_opt(key, desc, ref, { default = false })
+end
 function cli:add_opt(key, desc, ref, opts)
   -- is a placeholder value specified? (ie: in '-o FILE', capture the FILE part)
   -- local name_val = split(name, ' ')
@@ -100,16 +111,42 @@ function cli:add_opt(key, desc, ref, opts)
     end
   end
 
-  table.insert(self.optional, { 
+  if not ref then
+    ref = key:gsub('[%W]', ''):sub(0,1)
+  end
+
+  local entry = { 
     key = key,
-    desc = desc,
+    expanded_key = opts.expanded_key,
     ref = ref,
     value = opts.value,
-    expanded_key = opts.expanded_key,
+    desc = desc,
     default = opts.default
-  })
+  }
 
-  -- table.dump(self.optional[#self.optional], 1)
+  -- parameterize the key if needed, possible variations:
+  -- 1. -key
+  -- 2. -key VALUE
+  -- 3. -key, --expanded
+  -- 4. -key, --expanded=VALUE
+
+  if key:find(',') then
+    local k,ek = unpack( split(key, ',') )
+            ek = ek:gsub(' ', '')
+    if ek:find('=') then
+      ek,v = unpack( split(ek,'=') )
+         v = v:gsub(' ', '')
+
+      entry.value = v
+    end
+
+    entry.key = k
+    entry.expanded_key = ek
+  end
+
+  table.insert(self.optional, entry)
+
+  table.dump(self.optional[#self.optional], 1)
 end
 
 function cli:locate_entry(key)
@@ -130,7 +167,7 @@ function cli:parse_args()
 
   -- missing any required arguments?
   if #self.args < #self.required then
-    self:error("missing arguments")
+    self:error("missing arguments, at least " .. #self.required .. " argument(s) must be specified")
     self:print_usage()
     return false
   end
@@ -140,7 +177,7 @@ function cli:parse_args()
     return self:print_help()
   end
 
-  print("Received " .. #self.args .. " arguments, required: " .. #self.required)
+  -- print("Received " .. #self.args .. " arguments, required: " .. #self.required)
 
   local args = {} -- returned set
 
@@ -163,7 +200,6 @@ function cli:parse_args()
         break
       end
 
-      print("Argument[" .. arg_idx .. "] => " .. arg)
       local entry, uses_expanded = self:locate_entry(arg)
 
       -- if it's an optional argument (starts with '-'), it must be listed
@@ -180,22 +216,25 @@ function cli:parse_args()
 
         args[ self.required[req_idx].ref ] = arg
         req_idx = req_idx + 1
+      
+      -- it's an optional argument, determine its type and which notation it uses
       else
-        -- it's an optional argument, determine which notation it uses (normal or expanded)
         local arg_val = nil
 
-        -- using the -option VALUE notation:
-        if not uses_expanded then
-          if #entry.value == 0 then
-            arg_val = true
-          elseif not (#self.args < arg_idx+1) then
+        -- it's a flag, using either -f --f notations
+        if #entry.value == 0 then
+          arg_val = true
+
+        -- an option using the -option VALUE notation:
+        elseif not uses_expanded then
+          if #self.args == arg_idx then
             return self:error("missing argument value in '" .. entry.key .. " " .. entry.value .. "'")
           else
             arg_val = self.args[arg_idx+1]
             skip = true
           end
 
-        -- using the --option=VALUE notation
+        -- an option using the --option=VALUE notation
         else 
           if not arg:find('=') then
             return 
@@ -235,12 +274,8 @@ function cli:print_usage()
   end
 
   print(msg)
-
-  -- display help listing
-  -- self:print_help()
 end
 
-local colsz = { 20, 45 }
 
 function cli:print_help()
   self:print_usage()
@@ -275,19 +310,26 @@ function cli:print_help()
       local separator = " "
       if #entry.expanded_key > 0 then
         arg_key = arg_key .. ", " .. entry.expanded_key
-        separator = "="
+        separator = #entry.value > 0 and "=" or ""
       end
       if arg_ph then
         arg_key = arg_key .. separator .. arg_ph
       end
 
       msg = msg .. "  " ..
-        expand(arg_key, colsz[1]) ..
-        delimit(arg_desc, colsz[2], colsz[1] + 2 --[[ margin ]]) .. '\n'
+        expand(arg_key, self.colsz[1]) ..
+        delimit(arg_desc, self.colsz[2], self.colsz[1] + 2 --[[ margin ]]) .. '\n'
     end
   end
 
   print(msg)
 end
+
+function cli:set_helpsz(rows, cols)
+  self.colsz = { rows or self.colsz[1], cols or self.colsz[2] }
+end
+-- aliases
+cli.add_argument = cli.add_arg
+cli.add_option = cli.add_opt
 
 return cli:new("")
