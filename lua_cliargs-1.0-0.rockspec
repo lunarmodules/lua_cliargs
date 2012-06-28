@@ -22,6 +22,6 @@ build = {
    -- We'll start here.
    type = "builtin",
    modules = {
-      cliargs = "cli.lua"
+      cliargs = "cliargs.lua"
    }
 }

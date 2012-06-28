@@ -20,7 +20,7 @@ The following script will define 4 arguments for the program called `test.lua`:
 ### Defining arguments
 
 ```lua
-local cli = require "cli"
+local cli = require "cliargs"
 cli:set_name("test.lua")
 cli:add_argument("ROOT", "path to where root scripts can be found")
 cli:add_option("-o FILE", "path to the output file")
