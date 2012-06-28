@@ -57,7 +57,15 @@ end
 -- -------- --
 -- CLI Main --
 -- -------- --
-function cli:new(name, required_args, optional_args)
+
+--- Creates a new instance of the CLI arguments parser and consumes `arg`.
+---
+--- **Note**: you don't need to invoke this directly as it is automatically
+--- done when you `require("cli")`.
+---
+--- ### Parameters
+--- 1. **name**: The name of the application, used in usage and help listings
+function cli:new(name)
   local o = {}
   setmetatable(o, { __index = self })
   self.__index = self
@@ -77,51 +85,56 @@ function cli:error(msg)
   return false
 end
 
+--- Assigns the name of the program which will be used for logging.
 function cli:set_name(name)
   self.name = name
 end
+
+--- Defines a required argument. 
+--- Required arguments have no special notation and are order-sensitive. 
+--- *Note:* if `@ref` is omitted, the value will be stored in `args[@key]`.  
+--- *Aliases: `add_argument`*
+---
+--- ### Parameters
+--- 1. **key**: the argument's "name" that will be displayed to the user
+--- 1. **desc**: a description of the argument
+--- 1. **ref**: optional; the table key that will be used to hold the value of this argument
+---
+--- ### Usage example
+--- The following will parse the argument (if specified) and set its value in `args["root_path"]`:  
+--- `cli:add_arg("root", "path to where root scripts can be found", "root_path")`  
 function cli:add_arg(key, desc, ref)
+  if not ref then ref = key end
   table.insert(self.required, { key = key, desc = desc, ref = ref })
 end
 
-function table.dump(t, indent_level)
-  print("Dumping table " .. tostring(t) .. " which has " .. #t .. " elements")
-  indent = ""; for i = 0, indent_level do indent = "\t" .. indent end
-  for k,v in pairs(t) do
-    print(indent .. tostring(k) .. " => " .. tostring(v))
-  end
-end
-
--- opts: { expanded_key = "--output", value_type="FILE", default="./file.txt" }
-function cli:add_flag(key, desc, ref)
-  return self:add_opt(key, desc, ref, { default = false })
-end
-function cli:add_opt(key, desc, ref, opts)
-  -- is a placeholder value specified? (ie: in '-o FILE', capture the FILE part)
-  -- local name_val = split(name, ' ')
-  -- local name,val = name, ""
-  -- if #name_val > 1 then
-    -- name, val = name_val[1], name_val[#name_val]
-  -- end
-
-  opts = opts or {}
-  for _,default_opt in pairs({ "expanded_key", "value", "default" }) do
-    if opts[default_opt] == nil then
-      opts[default_opt] = ""
-    end
-  end
-
+--- Defines an optional argument.
+--- Optional arguments can use 3 different notations, and can accept a value.  
+--- *Aliases: `add_option`*
+---
+--- ### Parameters
+--- 1. **key**: the argument identifier, can be either `-key`, or `-key, --expanded-key`:  
+--- if the first notation is used then a value can be defined after a space (`'-key VALUE'`),  
+--- if the 2nd notation is used then a value can be defined after an `=` (`'key, --expanded-key=VALUE'`).
+--- 1. **desc**: a description for the argument to be shown in --help
+--- 1. **ref**: *optional*; override where the value will be stored, @see cli:add_arg
+--- 1. **default**: *optional*; specify a default value (the default is "")
+---
+--- ### Usage example
+--- The following option will be stored in `args["i"]` with a default value of `my_file.txt`:  
+--- `cli:add_option("-i, --input=FILE", "path to the input file", nil, "my_file.txt")`
+function cli:add_opt(key, desc, ref, default)
   if not ref then
     ref = key:gsub('[%W]', ''):sub(0,1)
   end
 
   local entry = { 
     key = key,
-    expanded_key = opts.expanded_key,
+    expanded_key = "",
     ref = ref,
-    value = opts.value,
+    value = "",
     desc = desc,
-    default = opts.default
+    default = default == nil and "" or default
   }
 
   -- parameterize the key if needed, possible variations:
@@ -142,11 +155,26 @@ function cli:add_opt(key, desc, ref, opts)
 
     entry.key = k
     entry.expanded_key = ek
+  elseif key:find(' ') then
+    local k,v = unpack( split(key, ' ') )
+          k = k:gsub(' ', '')
+          v = v:gsub(' ', '')
+
+    entry.key, entry.value = k, v
   end
 
   table.insert(self.optional, entry)
+end
 
-  table.dump(self.optional[#self.optional], 1)
+--- Define a flag argument (on/off). This is a convenience helper for cli.add_opt(). 
+--- See cli.add_opt() for more information.
+---
+--- ### Parameters
+-- 1. **key**: the argument's key
+-- 1. **desc**: a description of the argument to be displayed in the help listing
+-- 1. **ref**: optionally override where the key which will hold the value
+function cli:add_flag(key, desc, ref)
+  return self:add_opt(key, desc, ref, false)
 end
 
 function cli:locate_entry(key)
@@ -163,6 +191,9 @@ function cli:locate_entry(key)
   return nil, nil
 end
 
+--- Parses the arguments found in #arg and returns a table with the populated values.
+--- ### Returns
+--- 1. a table containing the keys specified when the arguments were defined along with the parsed values.
 function cli:parse_args()
 
   -- missing any required arguments?
@@ -183,7 +214,6 @@ function cli:parse_args()
 
   -- set up defaults
   -- for _,entry in ipairs(self.required) do
-  --   table.dump(entry)
   --   -- args[ entry[3] ] = entry[4] or ""
   --   args[ entry.ref ] = entry.default
   -- end
@@ -325,9 +355,15 @@ function cli:print_help()
   print(msg)
 end
 
-function cli:set_helpsz(rows, cols)
-  self.colsz = { rows or self.colsz[1], cols or self.colsz[2] }
+--- Sets the amount of space allocated to the argument keys and descriptions in the help listing.
+--- The sizes are used for wrapping long argument keys and descriptions.
+--- ### Parameters
+--- 1. **key_cols**: the number of columns assigned to the argument keys (default: 20)
+--- 1. **desc_cols**: the number of columns assigned to the argument descriptions (default: 45)
+function cli:set_colsz(key_cols, desc_cols)
+  self.colsz = { key_cols or self.colsz[1], desc_cols or self.colsz[2] }
 end
+
 -- aliases
 cli.add_argument = cli.add_arg
 cli.add_option = cli.add_opt
