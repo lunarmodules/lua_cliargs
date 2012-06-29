@@ -34,6 +34,16 @@ local split = function(str, pat)
   return t
 end
 
+local join = function(t, delim)
+  out = ""
+  i = 0
+  for _,item in pairs(t) do
+    out = item .. delim
+  end
+  out = out:sub(0, #out - #delim)
+  return out
+end
+
 local delimit = function(str, size, pad)
   if not pad then pad = 0 end
 
@@ -288,7 +298,14 @@ function cli:parse_args(dump)
               "', value must be specified using: " .. entry.expanded_key .. "=" .. entry.value)
           end
 
-          arg_val = split(arg, '=')[2] or ""
+          -- local v = split(arg, '=')
+          arg_val = arg:sub(#entry.expanded_key+2,#arg)
+          -- for i=1,#v do
+            -- arg_val = v[i] .. "="
+          -- end
+          -- table.remove(arg_val, 1)
+          -- arg_val = join(arg_val, '=')
+          print('joined value: ' .. arg_val)
         end
 
         args[ entry.ref ] = arg_val
@@ -383,6 +400,8 @@ end
 function cli:set_colsz(key_cols, desc_cols)
   self.colsz = { key_cols or self.colsz[1], desc_cols or self.colsz[2] }
 end
+
+cli.version = "1.1-0"
 
 -- aliases
 cli.add_argument = cli.add_arg
