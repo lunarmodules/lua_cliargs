@@ -125,7 +125,11 @@ end
 --- `cli:add_option("-i, --input=FILE", "path to the input file", nil, "my_file.txt")`
 function cli:add_opt(key, desc, ref, default)
   if not ref then
-    ref = key:gsub('[%W]', ''):sub(0,1)
+    if key:find('%-%-') == 1 then
+      ref = key:gsub("(%-%-)", ""):gsub("(=.*)", "")
+    else
+      ref = string.gsub(key, '[%W]', ''):sub(0,1)
+    end
   end
 
   local entry = { 
@@ -143,6 +147,7 @@ function cli:add_opt(key, desc, ref, default)
   -- 3. -key, --expanded
   -- 4. -key, --expanded=VALUE
 
+  -- -a, --argument[=VALUE] was passed
   if key:find(',') then
     local k,ek = unpack( split(key, ',') )
             ek = ek:gsub(' ', '')
@@ -155,6 +160,18 @@ function cli:add_opt(key, desc, ref, default)
 
     entry.key = k
     entry.expanded_key = ek
+  -- --argument[=VALUE] was passed
+  elseif key:find('%-%-') == 1 then
+    if key:find('=') then
+      k,v = unpack( split(key,'=') )
+        v = v:gsub(' ', '')
+
+      entry.value = v
+      key = k
+    end
+    entry.key = ""-- key
+    entry.expanded_key = key
+  -- -a[ VALUE] was passed
   elseif key:find(' ') then
     local k,v = unpack( split(key, ' ') )
           k = k:gsub(' ', '')
@@ -178,14 +195,17 @@ function cli:add_flag(key, desc, ref)
 end
 
 function cli:locate_entry(key)
-  if key:find('--') == 1 and key:find('=') then
+  -- strip the leading -- from the key if it's an expanded one
+  if key:find('%-%-') == 1 and key:find('=') then
     key = split(key, '=')[1]
-    -- print("stripped key: " .. key)
   end
 
   for _,entry in ipairs(self.optional) do
-    if entry.key == key then return entry,false
-    elseif entry.expanded_key == key then return entry,true end
+    if entry.key == key then
+      return entry,false
+    elseif entry.expanded_key == key then
+      return entry,true
+    end
   end
 
   return nil, nil
@@ -194,7 +214,7 @@ end
 --- Parses the arguments found in #arg and returns a table with the populated values.
 --- ### Returns
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values.
-function cli:parse_args()
+function cli:parse_args(dump)
 
   -- missing any required arguments?
   if #self.args < #self.required then
@@ -213,10 +233,6 @@ function cli:parse_args()
   local args = {} -- returned set
 
   -- set up defaults
-  -- for _,entry in ipairs(self.required) do
-  --   -- args[ entry[3] ] = entry[4] or ""
-  --   args[ entry.ref ] = entry.default
-  -- end
   for _,entry in ipairs(self.optional) do
     args[ entry.ref ] = entry.default
   end
@@ -285,6 +301,10 @@ function cli:parse_args()
     return self:error("missing required arguments")
   end
 
+  if dump then
+    for k,v in pairs(args) do print("  " .. k .. " => " .. tostring(v)) end
+  end
+
   return args
 end
 
@@ -339,7 +359,7 @@ function cli:print_help()
 
       local separator = " "
       if #entry.expanded_key > 0 then
-        arg_key = arg_key .. ", " .. entry.expanded_key
+        arg_key = (#arg_key > 0 and arg_key .. ", " or "") .. entry.expanded_key
         separator = #entry.value > 0 and "=" or ""
       end
       if arg_ph then
