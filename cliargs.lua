@@ -305,7 +305,7 @@ function cli:parse_args(dump)
           -- end
           -- table.remove(arg_val, 1)
           -- arg_val = join(arg_val, '=')
-          print('joined value: ' .. arg_val)
+          -- print('joined value: ' .. arg_val)
         end
 
         args[ entry.ref ] = arg_val
