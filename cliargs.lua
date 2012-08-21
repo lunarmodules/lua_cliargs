@@ -149,6 +149,7 @@ function cli:add_opt(key, desc, ref, default)
     value = "",
     desc = desc,
     default = default == nil and "" or default
+    -- default = default
   }
 
   -- parameterize the key if needed, possible variations:
@@ -226,16 +227,16 @@ end
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values.
 function cli:parse_args(dump)
 
+  -- starts with --help? display the help listing and abort!
+  if self.args[1] and (self.args[1] == "--help" or self.args[1] == "-h") then
+    return self:print_help()
+  end
+
   -- missing any required arguments?
   if #self.args < #self.required then
     self:error("missing arguments, at least " .. #self.required .. " argument(s) must be specified")
     self:print_usage()
     return false
-  end
-
-  -- starts with --help? display the help listing and abort!
-  if self.args[1] and self.args[1] == "--help" then
-    return self:print_help()
   end
 
   -- print("Received " .. #self.args .. " arguments, required: " .. #self.required)
