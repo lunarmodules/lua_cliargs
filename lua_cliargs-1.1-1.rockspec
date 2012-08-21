@@ -1,5 +1,5 @@
 package = "lua_cliargs"
-version = "1.1-0"
+version = "1.1-1"
 source = {
    url = "https://github.com/downloads/amireh/lua_cliargs/lua_cliargs-1.1.tar.gz"
 }
