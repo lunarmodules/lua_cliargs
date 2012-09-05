@@ -345,7 +345,6 @@ end
 function cli:print_help()
   self:print_usage()
 
-  local keysz = 20
   local msg = ""
 
   if self.required and #self.required > 0 then
@@ -356,8 +355,8 @@ function cli:print_help()
             entry.key, entry.desc, entry.ref
 
       msg = msg ..
-            "  " .. expand(arg_key, keysz) ..
-            arg_desc .. "\n"
+            "  " .. expand(arg_key, self.colsz[1]) ..
+            delimit(arg_desc, self.colsz[2], self.colsz[1] + 2 --[[ margin ]]) .. '\n'
     end
   end
 
