@@ -100,9 +100,9 @@ function cli:set_name(name)
   self.name = name
 end
 
---- Defines a required argument. 
---- Required arguments have no special notation and are order-sensitive. 
---- *Note:* if `@ref` is omitted, the value will be stored in `args[@key]`.  
+--- Defines a required argument.
+--- Required arguments have no special notation and are order-sensitive.
+--- *Note:* if `@ref` is omitted, the value will be stored in `args[@key]`.
 --- *Aliases: `add_argument`*
 ---
 --- ### Parameters
@@ -111,27 +111,27 @@ end
 --- 1. **ref**: optional; the table key that will be used to hold the value of this argument
 ---
 --- ### Usage example
---- The following will parse the argument (if specified) and set its value in `args["root_path"]`:  
---- `cli:add_arg("root", "path to where root scripts can be found", "root_path")`  
+--- The following will parse the argument (if specified) and set its value in `args["root_path"]`:
+--- `cli:add_arg("root", "path to where root scripts can be found", "root_path")`
 function cli:add_arg(key, desc, ref)
   if not ref then ref = key end
   table.insert(self.required, { key = key, desc = desc, ref = ref })
 end
 
 --- Defines an optional argument.
---- Optional arguments can use 3 different notations, and can accept a value.  
+--- Optional arguments can use 3 different notations, and can accept a value.
 --- *Aliases: `add_option`*
 ---
 --- ### Parameters
---- 1. **key**: the argument identifier, can be either `-key`, or `-key, --expanded-key`:  
---- if the first notation is used then a value can be defined after a space (`'-key VALUE'`),  
+--- 1. **key**: the argument identifier, can be either `-key`, or `-key, --expanded-key`:
+--- if the first notation is used then a value can be defined after a space (`'-key VALUE'`),
 --- if the 2nd notation is used then a value can be defined after an `=` (`'key, --expanded-key=VALUE'`).
 --- 1. **desc**: a description for the argument to be shown in --help
 --- 1. **ref**: *optional*; override where the value will be stored, @see cli:add_arg
 --- 1. **default**: *optional*; specify a default value (the default is "")
 ---
 --- ### Usage example
---- The following option will be stored in `args["i"]` with a default value of `my_file.txt`:  
+--- The following option will be stored in `args["i"]` with a default value of `my_file.txt`:
 --- `cli:add_option("-i, --input=FILE", "path to the input file", nil, "my_file.txt")`
 function cli:add_opt(key, desc, ref, default)
   if not ref then
@@ -142,7 +142,7 @@ function cli:add_opt(key, desc, ref, default)
     end
   end
 
-  local entry = { 
+  local entry = {
     key = key,
     expanded_key = "",
     ref = ref,
@@ -194,7 +194,7 @@ function cli:add_opt(key, desc, ref, default)
   table.insert(self.optional, entry)
 end
 
---- Define a flag argument (on/off). This is a convenience helper for cli.add_opt(). 
+--- Define a flag argument (on/off). This is a convenience helper for cli.add_opt().
 --- See cli.add_opt() for more information.
 ---
 --- ### Parameters
@@ -273,7 +273,7 @@ function cli:parse_args(dump)
 
         args[ self.required[req_idx].ref ] = arg
         req_idx = req_idx + 1
-      
+
       -- it's an optional argument, determine its type and which notation it uses
       else
         local arg_val = nil
@@ -292,10 +292,10 @@ function cli:parse_args(dump)
           end
 
         -- an option using the --option=VALUE notation
-        else 
+        else
           if not arg:find('=') then
-            return 
-              self:error("missing argument value in '" .. entry.expanded_key .. 
+            return
+              self:error("missing argument value in '" .. entry.expanded_key ..
               "', value must be specified using: " .. entry.expanded_key .. "=" .. entry.value)
           end
 
@@ -334,10 +334,7 @@ function cli:print_usage()
   end
   if self.required and #self.required > 0 then
     for _,entry in ipairs(self.required) do
-      local arg_key, arg_desc, arg_name =
-            entry.key, entry.desc, entry.ref
-
-      msg = msg .. " " .. arg_key .. " "
+      msg = msg .. " " .. entry.key .. " "
     end
   end
 
