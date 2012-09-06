@@ -1,5 +1,6 @@
 require("busted")
 
+-- some helper stuff for debugging
 local quoted = function(s)
   return "'" .. tostring(s) .. "'" 
 end
@@ -15,6 +16,7 @@ local dump = function(t)
   print(" ============= Dump " .. tostring(t) .. " =============")
 end
 
+-- start tests
 describe("Testing cliargs library", function()
 
   local cli
@@ -66,6 +68,7 @@ describe("Testing cliargs library", function()
 
     end)
 
+--[[  Join() has been removed from the code
     it("tests the private join() function", function()
       -- takes: table, separator
       local expected, result
@@ -82,6 +85,21 @@ describe("Testing cliargs library", function()
       expected = "hello,,world"
       assert.is.same(result, expected)
 
+    end)
+--]]
+
+    it("tests the private trim() function", function()
+      -- test from Lua wiki
+      assert.is.same(cli.trim(''),'')
+      assert.is.same(cli.trim(' '),'')
+      assert.is.same(cli.trim('  '),'')
+      assert.is.same(cli.trim('a'),'a')
+      assert.is.same(cli.trim(' a'),'a')
+      assert.is.same(cli.trim('a '),'a')
+      assert.is.same(cli.trim(' a '),'a')
+      assert.is.same(cli.trim('  a  '),'a')
+      assert.is.same(cli.trim('  ab cd  '),'ab cd')
+      assert.is.same(cli.trim(' \t\r\n\f\va\000b \r\t\n\f\v'),'a\000b')
     end)
 
     it("tests the private delimit() function", function()

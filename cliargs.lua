@@ -3,6 +3,10 @@ local cli = {}
 -- ------- --
 -- Helpers --
 -- ------- --
+local function trim(s)
+  return s:gsub("^%s+", ""):gsub("%s+$", "")
+end
+
 local expand = function(str, size, fill)
   return str .. string.rep(fill or " ", size - #str)
 end
@@ -24,16 +28,6 @@ local split = function(str, pat)
     table.insert(t, cap)
   end
   return t
-end
-
-local join = function(t, delim)
-  out = ""
-  i = 0
-  for _,item in pairs(t) do
-    out = out .. item .. delim
-  end
-  out = out:sub(0, #out - #delim)
-  return out
 end
 
 local buildline = function(words, size, overflow)
@@ -225,7 +219,7 @@ end
 
 function cli:locate_entry(key)
   -- strip the leading -- from the key if it's an expanded one
-  if key:find('%-%-') == 1 and key:find('=') then
+  if key:sub(1,2) == '--' and key:find('=') then
     key = split(key, '=')[1]
   end
 
@@ -237,10 +231,14 @@ function cli:locate_entry(key)
     end
   end
 
-  return nil, nil
+  return 
 end
 
 --- Parses the arguments found in #arg and returns a table with the populated values.
+---
+--- ### Parameters
+--- 1. **dump**: set this flag to dump the parsed variables for debugging purposes
+---
 --- ### Returns
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values.
 function cli:parse_args(dump)
@@ -256,8 +254,6 @@ function cli:parse_args(dump)
     self:print_usage()
     return false
   end
-
-  -- print("Received " .. #self.args .. " arguments, required: " .. #self.required)
 
   local args = {} -- returned set
 
@@ -278,7 +274,7 @@ function cli:parse_args(dump)
       local entry, uses_expanded = self:locate_entry(arg)
 
       -- if it's an optional argument (starts with '-'), it must be listed
-      if arg:find('-') == 1 and not entry then
+      if arg:sub(1,1) == '-' and not entry then
         return self:error("unknown option " .. arg)
       end
 
@@ -317,14 +313,7 @@ function cli:parse_args(dump)
               "', value must be specified using: " .. entry.expanded_key .. "=" .. entry.value)
           end
 
-          -- local v = split(arg, '=')
           arg_val = arg:sub(#entry.expanded_key+2,#arg)
-          -- for i=1,#v do
-            -- arg_val = v[i] .. "="
-          -- end
-          -- table.remove(arg_val, 1)
-          -- arg_val = join(arg_val, '=')
-          -- print('joined value: ' .. arg_val)
         end
 
         args[ entry.ref ] = arg_val
@@ -338,7 +327,7 @@ function cli:parse_args(dump)
   end
 
   if dump then
-    for k,v in pairs(args) do print("  " .. k .. " => " .. tostring(v)) end
+    for k,v in pairs(args) do print("  " .. expand(k, 15) .. " => " .. tostring(v)) end
   end
 
   return args
@@ -369,12 +358,9 @@ function cli:print_help()
     msg = msg .. "\nRequired arguments: \n"
 
     for _,entry in ipairs(self.required) do
-      local arg_key, arg_desc, arg_name =
-            entry.key, entry.desc, entry.ref
-
       msg = msg ..
-            "  " .. expand(arg_key, self.colsz[1]) ..
-            delimit(arg_desc, self.colsz[2], self.colsz[1] + 2 --[[ margin ]]) .. '\n'
+            "  " .. expand(entry.key, self.colsz[1]) ..
+            trim(delimit(arg_desc, self.colsz[2], self.colsz[1] + 2 --[[ margin ]])) .. '\n'
     end
   end
 
@@ -400,7 +386,7 @@ function cli:print_help()
 
       msg = msg .. "  " ..
         expand(arg_key, self.colsz[1]) ..
-        delimit(arg_desc, self.colsz[2], self.colsz[1] + 2 --[[ margin ]]) .. '\n'
+        trim(delimit(arg_desc, self.colsz[2], self.colsz[1] + 2 --[[ margin ]])) .. '\n'
     end
   end
 
@@ -421,11 +407,12 @@ cli.version = "1.1-0"
 -- aliases
 cli.add_argument = cli.add_arg
 cli.add_option = cli.add_opt
+
 -- test aliases for local functions
 if _TEST then
   cli.expand = expand
   cli.split = split
-  cli.join = join
+  cli.trim = trim
   cli.delimit = delimit
 end
 
