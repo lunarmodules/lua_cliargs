@@ -8,7 +8,7 @@ local expand = function(str, size, fill)
 
   local out = str
 
-  for i=0,size - #str do
+  for i=1,size - #str do
     out = out .. fill
   end
 
@@ -38,26 +38,52 @@ local join = function(t, delim)
   out = ""
   i = 0
   for _,item in pairs(t) do
-    out = item .. delim
+    out = out .. item .. delim
   end
   out = out:sub(0, #out - #delim)
   return out
 end
 
-local delimit = function(str, size, pad)
-  if not pad then pad = 0 end
+local buildline = function(words, size, overflow)
+  -- if overflow is set, a word longer than size, will overflow the size
+  -- otherwise it will be chopped in line-length pieces
+  local line = ""
+  if string.len(words[1]) > size then
+    -- word longer than line
+    if overflow then
+      line = words[1]
+      table.remove(words, 1)
+    else
+      line = words[1]:sub(1, size)
+      words[1] = words[1]:sub(size + 1, -1)
+    end
+  else
+    while words[1] and (#line + string.len(words[1]) + 1 <= size) or (line == "" and #words[1] == size) do
+      if line == "" then
+        line = words[1]
+      else
+        line = line .. " " .. words[1]
+      end
+      table.remove(words, 1)
+    end
+  end
+  return line, words
+end
 
+local delimit = function(str, size, pad, overflow)
+  pad = pad or 0
+
+  local line = ""
   local out = ""
+  local padstr = string.rep(" ", pad)
   local words = split(str, ' ')
 
-  local offset = 0
-  for word_idx,word in pairs(words) do
-    out = out .. word .. ' '
-    offset = offset + #word
-    if offset > size and word_idx ~= #words then
-      out = out .. '\n'
-      for i=0,pad do out = out .. ' '; end
-      offset = 0
+  while words[1] do
+    line, words = buildline(words, size, overflow)
+    if out == "" then
+      out = padstr .. line
+    else
+        out = out .. "\n" .. padstr .. line
     end
   end
 
@@ -403,5 +429,12 @@ cli.version = "1.1-0"
 -- aliases
 cli.add_argument = cli.add_arg
 cli.add_option = cli.add_opt
+-- test aliases for local functions
+if _TEST then
+  cli.expand = expand
+  cli.split = split
+  cli.join = join
+  cli.delimit = delimit
+end
 
 return cli:new("")
