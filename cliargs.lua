@@ -4,15 +4,7 @@ local cli = {}
 -- Helpers --
 -- ------- --
 local expand = function(str, size, fill)
-  if not fill then fill = ' ' end
-
-  local out = str
-
-  for i=1,size - #str do
-    out = out .. fill
-  end
-
-  return out
+  return str .. string.rep(fill or " ", size - #str)
 end
 
 local split = function(str, pat)
