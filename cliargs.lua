@@ -225,8 +225,10 @@ function cli:parse_args(dump)
     local _, optpref, optkey, optkey2, optval
     _, _, optpref, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
     if optkey then
-      _, _, optkey2, optval = optkey:find(".-[=](.+)")       -- Gets the value
-      if optkey2 then optkey = optkey2 end
+      _, _, optkey2, optval = optkey:find("(.-)[=](.+)")       -- split value and key
+      if optval then
+        optkey = optkey2
+      end
     end
 
     if not optpref then
