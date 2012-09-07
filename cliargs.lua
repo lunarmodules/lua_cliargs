@@ -79,11 +79,11 @@ end
 -- -------- --
 
 cli = {
-  name = "unnamed",
+  name = "",
   required = {},
   optional = {},
   args = {},
-  colsz = { 0, 45 }, -- if first is 0, then column width is auto detected
+  colsz = { 0, 0 }, -- set to 0 for auto detect
   maxlabel = 0,
 }
 
@@ -322,6 +322,8 @@ function cli:print_help(noprint)
   local col2 = self.colsz[2]
   if col1 == 0 then col1 = o.maxlabel end
   col1 = col1 + 3     --add margins
+  if col2 == 0 then col2 = 72 - col1 end
+  if col2 <10 then col2 = 10 end
   
   local append = function(label, desc)
       label = "  " .. label .. string.rep(" ", col1 - (#label + 2))
@@ -359,7 +361,7 @@ end
 --- The sizes are used for wrapping long argument keys and descriptions.
 --- ### Parameters
 --- 1. **key_cols**: the number of columns assigned to the argument keys, set to 0 to auto detect (default: 0)
---- 1. **desc_cols**: the number of columns assigned to the argument descriptions (default: 45)
+--- 1. **desc_cols**: the number of columns assigned to the argument descriptions, set to 0 to auto set the total width to 72 (default: 0)
 function cli:set_colsz(key_cols, desc_cols)
   self.colsz = { key_cols or self.colsz[1], desc_cols or self.colsz[2] }
 end
@@ -380,4 +382,4 @@ if _TEST then
 end
 
 
-return cli:new("")
+return cli
