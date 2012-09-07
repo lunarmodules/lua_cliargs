@@ -1,4 +1,4 @@
-local cli
+local cli, _
 
 -- ------- --
 -- Helpers --
@@ -82,8 +82,7 @@ cli = {
   name = "",
   required = {},
   optional = {},
-  args = {},
-  colsz = { 0, 0 }, -- set to 0 for auto detect
+  colsz = { 0, 0 }, -- column width, help text. Set to 0 for auto detect
   maxlabel = 0,
 }
 
@@ -155,7 +154,15 @@ function cli:add_opt(key, desc, ref, default)
       _, _, k, v = key:find(PAT12)
     end
   end
-
+  if v == "" then v = nil end
+  
+  if default == false and v ~= nil then
+    assert(nil,"A flag type option cannot have a value set; " .. key)
+  end
+  -- set defaults
+  if not v then default = false end   -- no value, so its a flag
+  if not default then default = "" end
+  
   -- below description of full entry record, nils included for reference
   local entry = {
     key = k,
@@ -169,8 +176,8 @@ function cli:add_opt(key, desc, ref, default)
   }
 
   table.insert(self.optional, entry)
-  if entry.k then self.optional[entry.k] = entry end
-  if entry.ek then self.optional[entry.ek] = entry end
+  if entry.key then self.optional[entry.key] = entry end
+  if entry.expanded_key then self.optional[entry.expanded_key] = entry end
   if #key > self.maxlabel then self.maxlabel = #key end
   
 end
@@ -198,7 +205,8 @@ end
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values.
 function cli:parse_args(dump)
 
-  local args = self.args
+  local args = {}
+  for k,v in pairs(arg) do args[k] = v end  -- copy global args local
   
   -- starts with --help? display the help listing and abort!
   if args[1] and (args[1] == "--help" or args[1] == "-h") then
@@ -211,15 +219,17 @@ function cli:parse_args(dump)
     table.remove(args, 1)  -- delete it to prevent further parsing
   end
   
-    local PAT12 = "^%-([%a%d]+)[ ]?([%a%d]*)"                  -- matches 1 & 2, returns 2 captures
-
   while args[1] do
     local entry = nil
     local opt = args[1]
-    local _, _, optpref, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
-    local _, _, optkey, optval = optkey:find(".-[=](.+)")       -- Gets the value
-    
-    if not optref then
+    local _, optpref, optkey, optkey2, optval
+    _, _, optpref, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
+    if optkey then
+      _, _, optkey2, optval = optkey:find(".-[=](.+)")       -- Gets the value
+      if optkey2 then optkey = optkey2 end
+    end
+
+    if not optpref then
       break   -- no optional prefix, so options are done
     end
 
@@ -264,7 +274,14 @@ function cli:parse_args(dump)
   end
 
   if dump then
-    for k,v in pairs(results) do print("  " .. expand(k, 15) .. " => " .. tostring(v)) end
+    for k,v in pairs(results) do 
+      if type(v) == "string" then
+        v = "'"..v.."'"
+      else
+        v = tostring(v) .." (" .. type(v) .. ")"
+      end
+      print("  " .. k.. string.rep(" ", 20 - #k) .. " => " .. v) 
+    end
   end
   
   if not _TEST then
@@ -322,7 +339,7 @@ function cli:print_help(noprint)
   local msg = self:print_usage(true) .. "\n"
   local col1 = self.colsz[1]
   local col2 = self.colsz[2]
-  if col1 == 0 then col1 = o.maxlabel end
+  if col1 == 0 then col1 = cli.maxlabel end
   col1 = col1 + 3     --add margins
   if col2 == 0 then col2 = 72 - col1 end
   if col2 <10 then col2 = 10 end
@@ -371,7 +388,6 @@ end
 
 -- finalize setup
 cli.version = "1.1-0"
-for k,v in pairs(arg) do o.args[k] = v end
 
 -- aliases
 cli.add_argument = cli.add_arg
