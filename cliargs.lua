@@ -1,4 +1,4 @@
-local cli = {}
+local cli
 
 -- ------- --
 -- Helpers --
@@ -69,38 +69,23 @@ local delimit = function(str, size, pad, overflow)
   return out
 end
 
+function cli_error(msg)
+  print(cli.name .. ": error: " .. msg .. '; re-run with --help for usage.')
+  return false
+end
+
 -- -------- --
 -- CLI Main --
 -- -------- --
 
---- Creates a new instance of the CLI arguments parser and consumes `arg`.
----
---- **Note**: you don't need to invoke this directly as it is automatically
---- done when you `require("cli")`.
----
---- ### Parameters
---- 1. **name**: The name of the application, used in usage and help listings
-function cli:new(name)
-  local o = {}
-  setmetatable(o, { __index = self })
-  self.__index = self
-
-  o.name = name or "unnamed"
-  o.required = {}
-  o.optional = {}
-  o.args = {}
-  for k,v in pairs(arg) do o.args[k] = v end
-
-  o.colsz = { 20, 45 }
-  o.maxlabel = 0
-  
-  return o
-end
-
-function cli:error(msg)
-  print(self.name .. ": error: " .. msg .. '; re-run with --help for usage.')
-  return false
-end
+cli = {
+  name = "unnamed",
+  required = {},
+  optional = {},
+  args = {},
+  colsz = { 0, 45 }, -- if first is 0, then column width is auto detected
+  maxlabel = 0,
+}
 
 --- Assigns the name of the program which will be used for logging.
 function cli:set_name(name)
@@ -201,9 +186,11 @@ end
 
 
 --- Parses the arguments found in #arg and returns a table with the populated values.
+--- (NOTE: after succesful parsing, the module will delete itself to free resources)
 ---
 --- ### Parameters
---- 1. **dump**: set this flag to dump the parsed variables for debugging purposes
+--- 1. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively 
+--- set the first option to --__DEBUG__ (option with 2 trailing and leading underscores) to dump at runtime.
 ---
 --- ### Returns
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values.
@@ -237,13 +224,13 @@ function cli:parse_args(dump)
     if optkey and self.optional[optkey] then
         entry = self.optional[optkey]
     else
-        return self:error("unknown/bad option; "..opt)
+        return cli_error("unknown/bad option; "..opt)
     end
 
     table.remove(args,1)
     if optpref == "-" then
       if optval then
-        return self:error("short option does not allow value through '='; "..opt)
+        return cli_error("short option does not allow value through '='; "..opt)
       end
       if entry.flag then
         optval = true
@@ -259,7 +246,7 @@ function cli:parse_args(dump)
 
   -- missing any required arguments, or too many?
   if #args ~= #self.required then
-    self:error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args)
+    cli_error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args)
     self:print_usage()
     return false
   end
@@ -277,7 +264,23 @@ function cli:parse_args(dump)
   if dump then
     for k,v in pairs(results) do print("  " .. expand(k, 15) .. " => " .. tostring(v)) end
   end
-
+  
+  if not _TEST then
+    -- cleanup entire module, as it's single use
+    -- remove from package.loaded table to enable the module to
+    -- garbage collected.
+    for k, v in pairs(package.loaded) do
+      if v == cli then
+        package.loaded[k] = nil
+        break
+      end
+    end
+    -- clear table in case user holds on to module table
+    for k, _ in pairs(cli) do
+      cli[k] = nil
+    end
+  end
+  
   return results
 end
 
@@ -355,13 +358,16 @@ end
 --- Sets the amount of space allocated to the argument keys and descriptions in the help listing.
 --- The sizes are used for wrapping long argument keys and descriptions.
 --- ### Parameters
---- 1. **key_cols**: the number of columns assigned to the argument keys (default: 20)
+--- 1. **key_cols**: the number of columns assigned to the argument keys, set to 0 to auto detect (default: 0)
 --- 1. **desc_cols**: the number of columns assigned to the argument descriptions (default: 45)
 function cli:set_colsz(key_cols, desc_cols)
   self.colsz = { key_cols or self.colsz[1], desc_cols or self.colsz[2] }
 end
 
+
+-- finalize setup
 cli.version = "1.1-0"
+for k,v in pairs(arg) do o.args[k] = v end
 
 -- aliases
 cli.add_argument = cli.add_arg
@@ -369,10 +375,9 @@ cli.add_option = cli.add_opt
 
 -- test aliases for local functions
 if _TEST then
-  cli.expand = expand
   cli.split = split
-  cli.trim = trim
   cli.delimit = delimit
 end
+
 
 return cli:new("")
