@@ -3,13 +3,6 @@ local cli = {}
 -- ------- --
 -- Helpers --
 -- ------- --
-local function trim(s)
-  return s:gsub("^%s+", ""):gsub("%s+$", "")
-end
-
-local expand = function(str, size, fill)
-  return str .. string.rep(fill or " ", size - #str)
-end
 
 local split = function(str, pat)
   local t = {}
@@ -92,13 +85,15 @@ function cli:new(name)
   setmetatable(o, { __index = self })
   self.__index = self
 
-  o.name = name
-  o.required = required_args or {}
-  o.optional = optional_args or {}
-  o.args = arg
+  o.name = name or "unnamed"
+  o.required = {}
+  o.optional = {}
+  o.args = {}
+  for k,v in pairs(arg) do o.args[k] = v end
 
   o.colsz = { 20, 45 }
-
+  o.maxlabel = 0
+  
   return o
 end
 
@@ -126,8 +121,9 @@ end
 --- The following will parse the argument (if specified) and set its value in `args["root_path"]`:
 --- `cli:add_arg("root", "path to where root scripts can be found", "root_path")`
 function cli:add_arg(key, desc, ref)
-  if not ref then ref = key end
-  table.insert(self.required, { key = key, desc = desc, ref = ref })
+  assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
+  table.insert(self.required, { key = key, desc = desc, ref = ref or key, value = nil })
+  if #key > self.maxlabel then self.maxlabel = #key end
 end
 
 --- Defines an optional argument.
@@ -146,64 +142,50 @@ end
 --- The following option will be stored in `args["i"]` with a default value of `my_file.txt`:
 --- `cli:add_option("-i, --input=FILE", "path to the input file", nil, "my_file.txt")`
 function cli:add_opt(key, desc, ref, default)
-  if not ref then
-    if key:find('%-%-') == 1 then
-      ref = key:gsub("(%-%-)", ""):gsub("(=.*)", "")
-    else
-      ref = string.gsub(key, '[%W]', ''):sub(0,1)
-    end
-  end
-
-  local entry = {
-    key = key,
-    expanded_key = "",
-    ref = ref,
-    value = "",
-    desc = desc,
-    default = default == nil and "" or default
-    -- default = default
-  }
 
   -- parameterize the key if needed, possible variations:
   -- 1. -key
   -- 2. -key VALUE
   -- 3. -key, --expanded
   -- 4. -key, --expanded=VALUE
+  -- 5. --expanded
+  -- 6. --expanded=VALUE
 
-  -- -a, --argument[=VALUE] was passed
-  if key:find(',') then
-    local k,ek = unpack( split(key, ',') )
-            ek = ek:gsub(' ', '')
-    if ek:find('=') then
-      ek,v = unpack( split(ek,'=') )
-         v = v:gsub(' ', '')
+  assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
+  assert(type(ref) == "string" or ref == nil, "Reference argument: expected a string or nil")
+  assert(type(default) == "string" or default == nil or default == false, "Default argument: expected a string or nil")
 
-      entry.value = v
+  local PAT12 = "^%-([%a%d]+)[ ]?([%a%d]*)"                  -- matches 1 & 2, returns 2 captures
+  local PAT34 = "^%-([%a%d]+), %-%-([%a%d]+)[=]?([%a%d]*)"   -- matches 3 & 4, returns 3 captures
+  local PAT56 = "^%-%-([%a%d]+)[=]?([%a%d]*)"                -- matches 5 & 6, returns 2 captures
+  local k, ek, v
+
+  -- first try expanded, retry short+expanded, finally short only
+  _, _, ek, v = key:find(PAT56)
+  if not ek then
+    _, _, k, ek, v = key:find(PAT34)
+    if not ek then
+      _, _, k, v = key:find(PAT12)
     end
-
-    entry.key = k
-    entry.expanded_key = ek
-  -- --argument[=VALUE] was passed
-  elseif key:find('%-%-') == 1 then
-    if key:find('=') then
-      k,v = unpack( split(key,'=') )
-        v = v:gsub(' ', '')
-
-      entry.value = v
-      key = k
-    end
-    entry.key = ""-- key
-    entry.expanded_key = key
-  -- -a[ VALUE] was passed
-  elseif key:find(' ') then
-    local k,v = unpack( split(key, ' ') )
-          k = k:gsub(' ', '')
-          v = v:gsub(' ', '')
-
-    entry.key, entry.value = k, v
   end
 
+  -- below description of full entry record, nils included for reference
+  local entry = {
+    key = k,
+    expanded_key = ek,
+    ref = ref or ek or k,
+    desc = desc,
+    default = default,
+    label = key,
+    flag = (default == false),
+    value = default,
+  }
+
   table.insert(self.optional, entry)
+  if entry.k then self.optional[entry.k] = entry end
+  if entry.ek then self.optional[entry.ek] = entry end
+  if #key > self.maxlabel then self.maxlabel = #key end
+  
 end
 
 --- Define a flag argument (on/off). This is a convenience helper for cli.add_opt().
@@ -214,25 +196,9 @@ end
 -- 1. **desc**: a description of the argument to be displayed in the help listing
 -- 1. **ref**: optionally override where the key which will hold the value
 function cli:add_flag(key, desc, ref)
-  return self:add_opt(key, desc, ref, false)
+  self:add_opt(key, desc, ref, false)
 end
 
-function cli:locate_entry(key)
-  -- strip the leading -- from the key if it's an expanded one
-  if key:sub(1,2) == '--' and key:find('=') then
-    key = split(key, '=')[1]
-  end
-
-  for _,entry in ipairs(self.optional) do
-    if entry.key == key then
-      return entry,false
-    elseif entry.expanded_key == key then
-      return entry,true
-    end
-  end
-
-  return 
-end
 
 --- Parses the arguments found in #arg and returns a table with the populated values.
 ---
@@ -243,154 +209,147 @@ end
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values.
 function cli:parse_args(dump)
 
+  local args = self.args
+  
   -- starts with --help? display the help listing and abort!
-  if self.args[1] and (self.args[1] == "--help" or self.args[1] == "-h") then
+  if args[1] and (args[1] == "--help" or args[1] == "-h") then
     return self:print_help()
   end
 
-  -- missing any required arguments?
-  if #self.args < #self.required then
-    self:error("missing arguments, at least " .. #self.required .. " argument(s) must be specified")
+  -- starts with --__DUMP__ display set dump to true and dump the parse arguments
+  if dump == nil then 
+    dump = (args[1] and args[1] == "--__DUMP__")
+    table.remove(args, 1)  -- delete it to prevent further parsing
+  end
+  
+    local PAT12 = "^%-([%a%d]+)[ ]?([%a%d]*)"                  -- matches 1 & 2, returns 2 captures
+
+  while args[1] do
+    local entry = nil
+    local opt = args[1]
+    local _, _, optpref, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
+    local _, _, optkey, optval = optkey:find(".-[=](.+)")       -- Gets the value
+    
+    if not optref then
+      break   -- no optional prefix, so options are done
+    end
+
+    if optkey and self.optional[optkey] then
+        entry = self.optional[optkey]
+    else
+        return self:error("unknown/bad option; "..opt)
+    end
+
+    table.remove(args,1)
+    if optpref == "-" then
+      if optval then
+        return self:error("short option does not allow value through '='; "..opt)
+      end
+      if entry.flag then
+        optval = true
+      else
+        -- not a flag, value is in the next argument
+        optval = args[1]
+        table.remove(args, 1)
+      end
+    end
+    
+    entry.value = optval
+  end
+
+  -- missing any required arguments, or too many?
+  if #args ~= #self.required then
+    self:error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args)
     self:print_usage()
     return false
   end
 
-  local args = {} -- returned set
-
-  -- set up defaults
-  for _,entry in ipairs(self.optional) do
-    args[ entry.ref ] = entry.default
+  local results = {}
+  for i, entry in ipairs(self.required) do
+    results[entry.ref] = args[i]
   end
-
-  local req_idx = 1
-
-  for arg_idx, arg in ipairs(arg) do
-    repeat
-      if skip then
-        skip = false
-        break
-      end
-
-      local entry, uses_expanded = self:locate_entry(arg)
-
-      -- if it's an optional argument (starts with '-'), it must be listed
-      if arg:sub(1,1) == '-' and not entry then
-        return self:error("unknown option " .. arg)
-      end
-
-      -- it's a required argument
-      if not entry then
-        -- or it's one too many arguments
-        if not self.required[req_idx] then
-          return self:error("too many arguments! Can't map '" .. arg .. "'")
-        end
-
-        args[ self.required[req_idx].ref ] = arg
-        req_idx = req_idx + 1
-
-      -- it's an optional argument, determine its type and which notation it uses
-      else
-        local arg_val = nil
-
-        -- it's a flag, using either -f --f notations
-        if #entry.value == 0 then
-          arg_val = true
-
-        -- an option using the -option VALUE notation:
-        elseif not uses_expanded then
-          if #self.args == arg_idx then
-            return self:error("missing argument value in '" .. entry.key .. " " .. entry.value .. "'")
-          else
-            arg_val = self.args[arg_idx+1]
-            skip = true
-          end
-
-        -- an option using the --option=VALUE notation
-        else
-          if not arg:find('=') then
-            return
-              self:error("missing argument value in '" .. entry.expanded_key ..
-              "', value must be specified using: " .. entry.expanded_key .. "=" .. entry.value)
-          end
-
-          arg_val = arg:sub(#entry.expanded_key+2,#arg)
-        end
-
-        args[ entry.ref ] = arg_val
-      end
-
-    until true
-  end
-
-  if req_idx - 1 < #self.required then
-    return self:error("missing required arguments")
+  for _, entry in pairs(self.optional) do
+    if entry.key then results[entry.key] = entry.value end
+    if entry.expanded_key then results[entry.expanded_key] = entry.value end
+    results[entry.ref] = entry.value
   end
 
   if dump then
-    for k,v in pairs(args) do print("  " .. expand(k, 15) .. " => " .. tostring(v)) end
+    for k,v in pairs(results) do print("  " .. expand(k, 15) .. " => " .. tostring(v)) end
   end
 
-  return args
+  return results
 end
 
-function cli:print_usage()
+--- Prints the USAGE heading.
+---
+--- ### Parameters
+ ---1. **noprint**: set this flag to prevent the line from being printed
+---
+--- ### Returns
+--- 1. a string with the USAGE message.
+function cli:print_usage(noprint)
   -- print the USAGE heading
-  local msg = "Usage: " .. self.name
-  if self.optional and #self.optional > 0 then
+  local msg = "Usage: " .. tostring(self.name)
+  if self.optional[1] then
     msg = msg .. " [OPTIONS] "
   end
-  if self.required and #self.required > 0 then
+  if self.required[1] then
     for _,entry in ipairs(self.required) do
       msg = msg .. " " .. entry.key .. " "
     end
   end
 
-  print(msg)
+  if not noprint then print(msg) end
+  return msg
 end
 
 
-function cli:print_help()
-  self:print_usage()
+--- Prints the HELP information.
+---
+--- ### Parameters
+ ---1. **noprint**: set this flag to prevent the information from being printed
+---
+--- ### Returns
+--- 1. a string with the HELP message.
+function cli:print_help(noprint)
 
-  local msg = ""
-
-  if self.required and #self.required > 0 then
+  local msg = self:print_usage(true) .. "\n"
+  local col1 = self.colsz[1]
+  local col2 = self.colsz[2]
+  if col1 == 0 then col1 = o.maxlabel end
+  col1 = col1 + 3     --add margins
+  
+  local append = function(label, desc)
+      label = "  " .. label .. string.rep(" ", col1 - (#label + 2))
+      desc = delimit(desc, col2)   -- word-wrap
+      desc = desc:gsub("\n", "\n" .. string.rep(" ", col1)) -- add padding
+      
+      msg = msg .. label .. desc .. "\n"
+  end
+  
+  
+  if self.required[1] then
     msg = msg .. "\nRequired arguments: \n"
-
     for _,entry in ipairs(self.required) do
-      msg = msg ..
-            "  " .. expand(entry.key, self.colsz[1]) ..
-            trim(delimit(arg_desc, self.colsz[2], self.colsz[1] + 2 --[[ margin ]])) .. '\n'
+      append(entry.key, entry.desc)
     end
   end
 
-  if self.optional and #self.optional > 0 then
+  if self.optional[1] then
     msg = msg .. "\nOptional arguments: \n"
 
     for _,entry in ipairs(self.optional) do
-      local arg_key, arg_desc, arg_name, arg_default, arg_ph =
-            entry.key, entry.desc, entry.ref, entry.default, entry.value
-
-      if arg_default then
-        arg_desc = arg_desc .. " (default: " .. arg_default .. ")"
+      local desc = entry.desc
+      if not entry.flag and entry.default then
+        desc = desc .. " (default: " .. entry.default .. ")"
       end
-
-      local separator = " "
-      if #entry.expanded_key > 0 then
-        arg_key = (#arg_key > 0 and arg_key .. ", " or "") .. entry.expanded_key
-        separator = #entry.value > 0 and "=" or ""
-      end
-      if arg_ph then
-        arg_key = arg_key .. separator .. arg_ph
-      end
-
-      msg = msg .. "  " ..
-        expand(arg_key, self.colsz[1]) ..
-        trim(delimit(arg_desc, self.colsz[2], self.colsz[1] + 2 --[[ margin ]])) .. '\n'
+      append(entry.label, desc)
     end
   end
 
-  print(msg)
+  if not noprint then print(msg) end
+  return msg
 end
 
 --- Sets the amount of space allocated to the argument keys and descriptions in the help listing.

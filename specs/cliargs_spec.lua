@@ -127,5 +127,101 @@ describe("Testing cliargs library", function()
 
   end)   -- private functions
   
+  describe("testing public functions", function()
+
+    it("tests the add_arg() method", function()
+      -- takes: key, descr, ref
+      local key, desc, ref = "argname", "thedescription", "reference"
+      cli:add_arg(key, desc, ref)
+      assert.are.equal(cli.required[1].key, key)
+      assert.are.equal(cli.required[1].desc, desc)
+      assert.are.equal(cli.required[1].ref, ref)
+    end)
+    
+    describe("testing add_opt() method", function()
+
+      it("tests add_opt() with short-key", function()
+        -- takes: key, descr, ref, default
+        local key, desc, ref, default = "-i", "thedescription", "reference", "default"
+        cli:add_opt(key, desc, ref, default)
+        assert.are.equal(cli.optional[1].key, "i")
+        assert.are.equal(cli.optional[1].expanded_key, "")
+        assert.are.equal(cli.optional[1].desc, desc)
+        assert.are.equal(cli.optional[1].ref, ref)
+        assert.are.equal(cli.optional[1].default, default)
+      end)
+      
+      it("tests add_opt() with short-key & value", function()
+        -- takes: key, descr, ref, default
+        local key, desc, ref, default = "-i VALUE", "thedescription", "reference", "default"
+        cli:add_opt(key, desc, ref, default)
+        assert.are.equal(cli.optional[1].key, "i")
+        assert.are.equal(cli.optional[1].expanded_key, "")
+        assert.are.equal(cli.optional[1].desc, desc)
+        assert.are.equal(cli.optional[1].ref, ref)
+        assert.are.equal(cli.optional[1].default, default)
+      end)
+      
+      it("tests add_opt() with short + expanded-key", function()
+        -- takes: key, descr, ref, default
+        local key, desc, ref, default = "-i --insert", "thedescription", "reference", "default"
+        cli:add_opt(key, desc, ref, default)
+        assert.are.equal(cli.optional[1].key, "i")
+        assert.are.equal(cli.optional[1].expanded_key, "insert")
+        assert.are.equal(cli.optional[1].desc, desc)
+        assert.are.equal(cli.optional[1].ref, ref)
+        assert.are.equal(cli.optional[1].default, default)
+      end)
+      
+      it("tests add_opt() with short + expanded-key & value", function()
+        -- takes: key, descr, ref, default
+        local key, desc, ref, default = "-i --insert=VALUE", "thedescription", "reference", "default"
+        cli:add_opt(key, desc, ref, default)
+        assert.are.equal(cli.optional[1].key, "i")
+        assert.are.equal(cli.optional[1].expanded_key, "insert")
+        assert.are.equal(cli.optional[1].desc, desc)
+        assert.are.equal(cli.optional[1].ref, ref)
+        assert.are.equal(cli.optional[1].default, default)
+      end)
+      
+      it("tests add_opt() with only expanded-key", function()
+        -- takes: key, descr, ref, default
+        local key, desc, ref, default = "--insert", "thedescription", "reference", "default"
+        cli:add_opt(key, desc, ref, default)
+        assert.are.equal(cli.optional[1].key, "")
+        assert.are.equal(cli.optional[1].expanded_key, "insert")
+        assert.are.equal(cli.optional[1].desc, desc)
+        assert.are.equal(cli.optional[1].ref, ref)
+        assert.are.equal(cli.optional[1].default, default)
+      end)
+      
+      it("tests add_opt() with only expanded-key & value", function()
+        -- takes: key, descr, ref, default
+        local key, desc, ref, default = "--insert=VALUE", "thedescription", "reference", "default"
+        cli:add_opt(key, desc, ref, default)
+        assert.are.equal(cli.optional[1].key, "")
+        assert.are.equal(cli.optional[1].expanded_key, "insert")
+        assert.are.equal(cli.optional[1].desc, desc)
+        assert.are.equal(cli.optional[1].ref, ref)
+        assert.are.equal(cli.optional[1].default, default)
+      end)
+      
+      it("tests add_opt() with short-key, no reference", function()
+        -- takes: key, descr, ref, default
+        local key, desc, ref, default = "-i --insert=VALUE", "thedescription", nil, "default"
+        cli:add_opt(key, desc, ref, default)
+        assert.are.equal(cli.optional[1].ref, "i")
+      end)
+      
+      it("tests add_opt() with expanded-key, no reference", function()
+        -- takes: key, descr, ref, default
+        local key, desc, ref, default = "-i --insert=VALUE", "thedescription", nil, "default"
+        cli:add_opt(key, desc, ref, default)
+        assert.are.equal(cli.optional[1].ref, "insert")
+      end)
+      
+    end)
+    
+  end)   -- public functions
   
 end)
