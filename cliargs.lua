@@ -49,7 +49,9 @@ local buildline = function(words, size, overflow)
   return line, words
 end
 
-local delimit = function(str, size, pad, overflow)
+local wordwrap = function(str, size, pad, overflow)
+  -- if overflow is set, then words longer than a line will overflow
+  -- otherwise, they'll be chopped in pieces
   pad = pad or 0
 
   local line = ""
@@ -348,7 +350,7 @@ function cli:print_help(noprint)
   
   local append = function(label, desc)
       label = "  " .. label .. string.rep(" ", col1 - (#label + 2))
-      desc = delimit(desc, col2)   -- word-wrap
+      desc = wordwrap(desc, col2)   -- word-wrap
       desc = desc:gsub("\n", "\n" .. string.rep(" ", col1)) -- add padding
       
       msg = msg .. label .. desc .. "\n"
