@@ -161,7 +161,7 @@ function cli:add_opt(key, desc, ref, default)
   end
   -- set defaults
   if not v then default = false end   -- no value, so its a flag
-  if not default then default = "" end
+  if default == nil then default = "" end
   
   -- below description of full entry record, nils included for reference
   local entry = {
@@ -213,7 +213,7 @@ function cli:parse_args(dump)
     return self:print_help()
   end
 
-  -- starts with --__DUMP__ display set dump to true and dump the parse arguments
+  -- starts with --__DUMP__; set dump to true to dump the parsed arguments
   if dump == nil then 
     dump = (args[1] and args[1] == "--__DUMP__")
     table.remove(args, 1)  -- delete it to prevent further parsing
