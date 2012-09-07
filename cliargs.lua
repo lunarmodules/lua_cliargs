@@ -140,9 +140,11 @@ function cli:add_opt(key, desc, ref, default)
   assert(type(ref) == "string" or ref == nil, "Reference argument: expected a string or nil")
   assert(type(default) == "string" or default == nil or default == false, "Default argument: expected a string or nil")
 
-  local PAT12 = "^%-([%a%d]+)[ ]?([%a%d]*)"                  -- matches 1 & 2, returns 2 captures
-  local PAT34 = "^%-([%a%d]+), %-%-([%a%d]+)[=]?([%a%d]*)"   -- matches 3 & 4, returns 3 captures
-  local PAT56 = "^%-%-([%a%d]+)[=]?([%a%d]*)"                -- matches 5 & 6, returns 2 captures
+  -- characters allowed are a-z, A-Z, 0-9
+  -- extended + values also allow; # @ _ + - 
+  local PAT12 = "^%-([%a%d]+)[ ]?([%a%d#@_%+%-%$]*)"                           -- matches 1 & 2, returns 2 captures
+  local PAT34 = "^%-([%a%d]+), %-%-([%a%d#@_%+%-%$]+)[=]?([%a%d#@_%+%-%$]*)"   -- matches 3 & 4, returns 3 captures
+  local PAT56 = "^%-%-([%a%d#@_%+%-%$]+)[=]?([%a%d#@_%+%-%$]*)"                -- matches 5 & 6, returns 2 captures
   local k, ek, v
 
   -- first try expanded, retry short+expanded, finally short only
