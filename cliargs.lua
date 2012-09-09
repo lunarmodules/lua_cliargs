@@ -11,7 +11,7 @@ local split = function(str, pat)
   local s, e, cap = str:find(fpat, 1)
   while s do
     if s ~= 1 or cap ~= "" then
-  table.insert(t,cap)
+      table.insert(t,cap)
     end
     last_end = e+1
     s, e, cap = str:find(fpat, last_end)
@@ -71,9 +71,10 @@ local wordwrap = function(str, size, pad, overflow)
   return out
 end
 
-function cli_error(msg)
-  print(cli.name .. ": error: " .. msg .. '; re-run with --help for usage.')
-  return false
+function cli_error(msg, noprint)
+  local msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
+  if not noprint then print(msg) end
+  return nil, msg
 end
 
 -- -------- --
@@ -200,19 +201,21 @@ end
 --- (NOTE: after succesful parsing, the module will delete itself to free resources)
 ---
 --- ### Parameters
+--- 1. **noprint**: set this flag to prevent any information (error or help info) from being printed
 --- 1. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively 
 --- set the first option to --__DEBUG__ (option with 2 trailing and leading underscores) to dump at runtime.
 ---
 --- ### Returns
---- 1. a table containing the keys specified when the arguments were defined along with the parsed values.
-function cli:parse_args(dump)
+--- 1. a table containing the keys specified when the arguments were defined along with the parsed values,
+--- or nil + error message (--help option is considered an error and returns nil + help message)
+function cli:parse_args(noprint, dump)
 
   local args = {}
   for k,v in pairs(arg) do args[k] = v end  -- copy global args local
   
   -- starts with --help? display the help listing and abort!
   if args[1] and (args[1] == "--help" or args[1] == "-h") then
-    return self:print_help()
+    return nil, self:print_help(noprint)
   end
 
   -- starts with --__DUMP__; set dump to true to dump the parsed arguments
@@ -242,13 +245,13 @@ function cli:parse_args(dump)
     if optkey and self.optional[optkey] then
         entry = self.optional[optkey]
     else
-        return cli_error("unknown/bad option; "..opt)
+        return cli_error("unknown/bad option; "..opt, noprint)
     end
 
     table.remove(args,1)
     if optpref == "-" then
       if optval then
-        return cli_error("short option does not allow value through '='; "..opt)
+        return cli_error("short option does not allow value through '='; "..opt, noprint)
       end
       if entry.flag then
         optval = true
@@ -264,9 +267,7 @@ function cli:parse_args(dump)
 
   -- missing any required arguments, or too many?
   if #args ~= #self.required then
-    cli_error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args)
-    self:print_usage()
-    return false
+    return cli_error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
   end
 
   local results = {}
@@ -336,7 +337,7 @@ end
 --- Prints the HELP information.
 ---
 --- ### Parameters
- ---1. **noprint**: set this flag to prevent the information from being printed
+--- 1. **noprint**: set this flag to prevent the information from being printed
 ---
 --- ### Returns
 --- 1. a string with the HELP message.
@@ -401,7 +402,7 @@ cli.add_option = cli.add_opt
 -- test aliases for local functions
 if _TEST then
   cli.split = split
-  cli.delimit = delimit
+  cli.wordwrap = wordwrap
 end
 
 
