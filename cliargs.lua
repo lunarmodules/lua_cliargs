@@ -217,8 +217,10 @@ function cli:parse_args(dump)
 
   -- starts with --__DUMP__; set dump to true to dump the parsed arguments
   if dump == nil then 
-    dump = (args[1] and args[1] == "--__DUMP__")
-    table.remove(args, 1)  -- delete it to prevent further parsing
+    if args[1] and args[1] == "--__DUMP__" then
+      dump = true
+      table.remove(args, 1)  -- delete it to prevent further parsing
+    end
   end
   
   while args[1] do
@@ -355,7 +357,6 @@ function cli:print_help(noprint)
       
       msg = msg .. label .. desc .. "\n"
   end
-  
   
   if self.required[1] then
     msg = msg .. "\nRequired arguments: \n"
