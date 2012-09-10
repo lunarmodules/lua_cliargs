@@ -71,6 +71,31 @@ local wordwrap = function(str, size, pad, overflow)
   return out
 end
 
+function disect(key)
+  -- characters allowed are a-z, A-Z, 0-9
+  -- extended + values also allow; # @ _ + - 
+  local k, ek, v
+  local dummy
+  -- if there is no comma, between short and extended, add one
+  _, _, dummy = key:find("^%-([%a%d])[%s]%-%-")
+  if dummy then key = key:gsub("^%-[%a%d][%s]%-%-", "-"..dummy..", --", 1) end
+  -- for a short key + value, replace space by "="
+  _, _, dummy = key:find("^%-([%a%d])[%s]")
+  if dummy then key = key:gsub("^%-([%a%d])[ ]", "-"..dummy.."=", 1) end
+  -- if there is no "=", then append one
+  if not key:find("=") then key = key .. "=" end
+  -- get value
+  _, _, v = key:find(".-%=(.+)")
+  -- get key(s), remove spaces
+  key = split(key, "=")[1]:gsub(" ", "")
+  -- get short key & extended key
+  _, _, k = key:find("^%-([%a%d]+)")
+  _, _, ek = key:find("%-%-(.+)$")
+  if v == "" then v = nil end
+  return k,ek,v
+end
+
+
 function cli_error(msg, noprint)
   local msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
   if not noprint then print(msg) end
@@ -135,35 +160,22 @@ function cli:add_opt(key, desc, ref, default)
   -- 2. -key VALUE
   -- 3. -key, --expanded
   -- 4. -key, --expanded=VALUE
-  -- 5. --expanded
-  -- 6. --expanded=VALUE
+  -- 5. -key --expanded
+  -- 6. -key --expanded=VALUE
+  -- 7. --expanded
+  -- 8. --expanded=VALUE
 
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
   assert(type(ref) == "string" or ref == nil, "Reference argument: expected a string or nil")
   assert(type(default) == "string" or default == nil or default == false, "Default argument: expected a string or nil")
 
-  -- characters allowed are a-z, A-Z, 0-9
-  -- extended + values also allow; # @ _ + - 
-  local PAT12 = "^%-([%a%d]+)[ ]?([%a%d#@_%+%-%$]*)"                           -- matches 1 & 2, returns 2 captures
-  local PAT34 = "^%-([%a%d]+), %-%-([%a%d#@_%+%-%$]+)[=]?([%a%d#@_%+%-%$]*)"   -- matches 3 & 4, returns 3 captures
-  local PAT56 = "^%-%-([%a%d#@_%+%-%$]+)[=]?([%a%d#@_%+%-%$]*)"                -- matches 5 & 6, returns 2 captures
-  local k, ek, v
-
-  -- first try expanded, retry short+expanded, finally short only
-  _, _, ek, v = key:find(PAT56)
-  if not ek then
-    _, _, k, ek, v = key:find(PAT34)
-    if not ek then
-      _, _, k, v = key:find(PAT12)
-    end
-  end
-  if v == "" then v = nil end
+  local k, ek, v = disect(key)
   
   if default == false and v ~= nil then
     assert(nil,"A flag type option cannot have a value set; " .. key)
   end
   -- set defaults
-  if not v then default = false end   -- no value, so its a flag
+  if v == nil then default = false end   -- no value, so its a flag
   if default == nil then default = "" end
   
   -- below description of full entry record, nils included for reference

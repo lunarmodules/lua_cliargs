@@ -7,10 +7,18 @@ end
 local dump = function(t)
   print(" ============= Dump " .. tostring(t) .. " =============")
   if type(t) ~= "table" then
-    print(quoted(tostring(t)))
+    if type(t) == "string" then
+      print(quoted(tostring(t)))
+    else
+      print(tostring(t))
+    end
   else
     for k,v in pairs(t) do
-      print(quoted(k),quoted(v))
+      if type(v) == "string" then
+        print(quoted(k),quoted(v))
+      else
+        print(quoted(k),tostring(v))
+      end
     end
   end
   print(" ============= Dump " .. tostring(t) .. " =============")
@@ -130,7 +138,7 @@ describe("Testing cliargs library methods/functions", function()
     
     it("tests add_opt() with short + expanded-key", function()
       -- takes: key, descr, ref, default
-      local key, desc, ref, default = "-i --insert", "thedescription", "reference", "default"
+      local key, desc, ref, default = "-i, --insert", "thedescription", "reference", "default"
       cli:add_opt(key, desc, ref, default)
       assert.are.equal(cli.optional[1].key, "i")
       assert.are.equal(cli.optional[1].expanded_key, "insert")
@@ -141,7 +149,7 @@ describe("Testing cliargs library methods/functions", function()
     
     it("tests add_opt() with short + expanded-key & value", function()
       -- takes: key, descr, ref, default
-      local key, desc, ref, default = "-i --insert=VALUE", "thedescription", "reference", "default"
+      local key, desc, ref, default = "-i, --insert=VALUE", "thedescription", "reference", "default"
       cli:add_opt(key, desc, ref, default)
       assert.are.equal(cli.optional[1].key, "i")
       assert.are.equal(cli.optional[1].expanded_key, "insert")
@@ -181,7 +189,7 @@ describe("Testing cliargs library methods/functions", function()
     
     it("tests add_opt() with expanded-key, no reference", function()
       -- takes: key, descr, ref, default
-      local key, desc, ref, default = "-i --insert=VALUE", "thedescription", nil, "default"
+      local key, desc, ref, default = "-i, --insert=VALUE", "thedescription", nil, "default"
       cli:add_opt(key, desc, ref, default)
       assert.are.equal(cli.optional[1].ref, "insert")
     end)

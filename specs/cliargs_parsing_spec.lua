@@ -30,4 +30,17 @@ describe("Testing cliargs library parsing commandlines", function()
     _TEST = false
   end)
   
+  it("tests a table assertion", function()
+    -- "hello to the world"
+    arg = {"hello", "to", "the", "world"}
+    -- "-i insert"
+    arg = {"-i", "insert"}
+    -- "-i=c:\program files\"
+    arg = {"-i=c:\program", "files\\"}
+    
+  end)
+  
+  it("tests a function assertion", function()
+  end)
+  
 end)
