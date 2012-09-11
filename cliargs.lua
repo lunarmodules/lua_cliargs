@@ -211,6 +211,7 @@ end
 
 --- Parses the arguments found in #arg and returns a table with the populated values.
 --- (NOTE: after succesful parsing, the module will delete itself to free resources)
+--- *Aliases: `parse_args`*
 ---
 --- ### Parameters
 --- 1. **noprint**: set this flag to prevent any information (error or help info) from being printed
@@ -220,8 +221,9 @@ end
 --- ### Returns
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values,
 --- or nil + error message (--help option is considered an error and returns nil + help message)
-function cli:parse_args(noprint, dump)
+function cli:parse(noprint, dump)
 
+  arg = arg or {}
   local args = {}
   for k,v in pairs(arg) do args[k] = v end  -- copy global args local
   
@@ -430,6 +432,7 @@ cli.version = "1.1-0"
 -- aliases
 cli.add_argument = cli.add_arg
 cli.add_option = cli.add_opt
+cli.parse_args = cli.parse    -- backward compatibility
 
 -- test aliases for local functions
 if _TEST then

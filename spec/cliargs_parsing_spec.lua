@@ -30,17 +30,28 @@ describe("Testing cliargs library parsing commandlines", function()
     _TEST = false
   end)
   
-  it("tests a table assertion", function()
-    -- "hello to the world"
-    arg = {"hello", "to", "the", "world"}
-    -- "-i insert"
-    arg = {"-i", "insert"}
-    -- "-i=c:\program files\"
-    arg = {"-i=c:\program", "files\\"}
+  it("tests no arguments set, nor provided", function()
+    arg = nil
+    result = cli:parse_args()
     
   end)
   
-  it("tests a function assertion", function()
+  pending("tests only optionals, nothing provided", function()
+  end)
+  
+  pending("tests only required, all provided", function()
+  end)
+  
+  pending("tests only optionals, all provided", function()
+  end)
+  
+  pending("tests optionals + required, all provided", function()
+  end)
+  
+  pending("tests optionals + required, no optionals and to little required provided, ", function()
+  end)
+
+  pending("tests optionals + required, no optionals and to many required provided, ", function()
   end)
   
 end)
