@@ -294,19 +294,31 @@ function cli:parse_args(noprint, dump)
 
   if dump then
     print("\n======= Provided command line =============")
-    print("Number of arguments: ", #arg)
-    for i,v in ipairs(arg) do 
+    print("\nNumber of arguments: ", #arg)
+    for i,v in ipairs(arg) do -- use gloabl 'arg' not the modified local 'args'
       print(string.format("%3i = '%s'", i, v))
     end  -- copy global args local
   
     print("\n======= Parsed command line ===============")
-    for k,v in pairs(results) do 
-      if type(v) == "string" then
-        v = "'"..v.."'"
-      else
-        v = tostring(v) .." (" .. type(v) .. ")"
+    if #self.required > 0 then print("\nArguments:") end
+    for i,v in ipairs(self.required) do
+      print("  " .. v.key .. string.rep(" ", self.maxlabel + 2 - #v.key) .. " => '" .. tostring(args[i]) .. "'")
+    end
+    
+    if #self.optional > 0 then print("\nOptionals:") end
+    local doubles = {}
+    for k,v in pairs(self.optional) do 
+      if not doubles[v] then
+        local m = v.value
+        if type(m) == "string" then
+          m = "'"..m.."'"
+        else
+          m = tostring(m) .." (" .. type(m) .. ")"
+        end
+        print("  " .. v.label .. string.rep(" ", self.maxlabel + 2 - #v.label) .. " => " .. m)
+        doubles[v] = v
       end
-      print("  " .. k.. string.rep(" ", 20 - #k) .. " => " .. v) 
+
     end
     print("\n===========================================\n\n")
     return cli_error("commandline dump created as requested per '--__DUMP__' option", noprint)
