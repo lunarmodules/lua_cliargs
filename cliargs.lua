@@ -293,6 +293,13 @@ function cli:parse_args(noprint, dump)
   end
 
   if dump then
+    print("\n======= Provided command line =============")
+    print("Number of arguments: ", #arg)
+    for i,v in ipairs(arg) do 
+      print(string.format("%3i = '%s'", i, v))
+    end  -- copy global args local
+  
+    print("\n======= Parsed command line ===============")
     for k,v in pairs(results) do 
       if type(v) == "string" then
         v = "'"..v.."'"
@@ -301,6 +308,8 @@ function cli:parse_args(noprint, dump)
       end
       print("  " .. k.. string.rep(" ", 20 - #k) .. " => " .. v) 
     end
+    print("\n===========================================\n\n")
+    return cli_error("commandline dump created as requested per '--__DUMP__' option", noprint)
   end
   
   if not _TEST then
