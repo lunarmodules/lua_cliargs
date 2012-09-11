@@ -71,7 +71,7 @@ local wordwrap = function(str, size, pad, overflow)
   return out
 end
 
-function disect(key)
+local function disect(key)
   -- characters allowed are a-z, A-Z, 0-9
   -- extended + values also allow; # @ _ + - 
   local k, ek, v
@@ -307,7 +307,7 @@ function cli:parse_args(noprint, dump)
     
     if #self.optional > 0 then print("\nOptionals:") end
     local doubles = {}
-    for k,v in pairs(self.optional) do 
+    for _, v in pairs(self.optional) do 
       if not doubles[v] then
         local m = v.value
         if type(m) == "string" then
@@ -318,7 +318,6 @@ function cli:parse_args(noprint, dump)
         print("  " .. v.label .. string.rep(" ", self.maxlabel + 2 - #v.label) .. " => " .. m)
         doubles[v] = v
       end
-
     end
     print("\n===========================================\n\n")
     return cli_error("commandline dump created as requested per '--__DUMP__' option", noprint)
