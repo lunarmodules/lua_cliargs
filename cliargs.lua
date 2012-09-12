@@ -172,7 +172,7 @@ function cli:add_opt(key, desc, ref, default)
   local k, ek, v = disect(key)
   
   if default == false and v ~= nil then
-    assert(nil,"A flag type option cannot have a value set; " .. key)
+    error("A flag type option cannot have a value set; " .. key)
   end
   -- set defaults
   if v == nil then default = false end   -- no value, so its a flag

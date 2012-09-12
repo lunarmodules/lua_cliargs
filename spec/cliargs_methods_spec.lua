@@ -211,15 +211,15 @@ describe("Testing cliargs library methods/functions", function()
     it("tests add_flag() for setting default value", function()
       -- takes: key, descr, ref
       local key, desc, ref = "-i, --insert", "thedescription", "reference"
-      cli:add_opt(key, desc, ref)
+      cli:add_flag(key, desc, ref)
       assert.are.equal(cli.optional[1].flag, true)
-      assert.are.equal(cli.optional[1].default, false)  -- boolean becasue its a flag
+      assert.are.equal(cli.optional[1].default, false)  -- boolean because its a flag
     end)
 
     it("tests add_flag() to error-out when providing a value", function()
       -- takes: key, descr, ref
       local key, desc, ref = "-i, --insert=VALUE", "thedescription", "reference"
-      assert.is_not.error(cli:add_opt(key, desc, ref))  --'=VALUE' is not allowed for a flag
+      assert.is.error(function() cli:add_flag(key, desc, ref) end)  --'=VALUE' is not allowed for a flag
     end)
 
   end)   -- public functions
