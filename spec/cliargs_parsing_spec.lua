@@ -32,8 +32,8 @@ describe("Testing cliargs library parsing commandlines", function()
   
   it("tests no arguments set, nor provided", function()
     arg = nil
-    result = cli:parse_args()
-    
+    result = cli:parse()
+    assert.are.same(result, {})
   end)
   
   pending("tests only optionals, nothing provided", function()

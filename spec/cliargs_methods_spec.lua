@@ -219,7 +219,7 @@ describe("Testing cliargs library methods/functions", function()
     it("tests add_flag() to error-out when providing a value", function()
       -- takes: key, descr, ref
       local key, desc, ref = "-i, --insert=VALUE", "thedescription", "reference"
-      assert.isnot.error(cli:add_opt(key, desc, ref))  --'=VALUE' is not allowed for a flag
+      assert.is_not.error(cli:add_opt(key, desc, ref))  --'=VALUE' is not allowed for a flag
     end)
 
   end)   -- public functions
