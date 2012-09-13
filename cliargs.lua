@@ -123,7 +123,7 @@ end
 function cli:__lookup(k, ek)
   local _
   for _,entry in ipairs(self.optional) do
-    if k and entry.key == k then return entry end
+    if k  and entry.key == k then return entry end
     if ek and entry.expanded_key == ek then return entry end
   end
 
@@ -202,8 +202,6 @@ function cli:add_opt(key, desc, ref, default)
   }
 
   table.insert(self.optional, entry)
-  if entry.key then self.optional[entry.key] = entry end
-  if entry.expanded_key then self.optional[entry.expanded_key] = entry end
   if #key > self.maxlabel then self.maxlabel = #key end
   
 end
@@ -266,10 +264,14 @@ function cli:parse(noprint, dump)
       break   -- no optional prefix, so options are done
     end
 
-    if optkey and self.optional[optkey] then
-        entry = self.optional[optkey]
-    else
-        return cli_error("unknown/bad option; "..opt, noprint)
+    if optkey then
+      entry = 
+        self:__lookup(optpref == '-' and optkey or nil,
+                      optpref == '--' and optkey or nil)
+    end
+
+    if not optkey or not entry then
+      return cli_error("unknown/bad option; " .. opt, noprint)
     end
 
     table.remove(args,1)
