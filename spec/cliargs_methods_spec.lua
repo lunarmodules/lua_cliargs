@@ -222,6 +222,24 @@ describe("Testing cliargs library methods/functions", function()
       assert.is.error(function() cli:add_flag(key, desc, ref) end)  --'=VALUE' is not allowed for a flag
     end)
 
+    it("tests add_arg() with a duplicate argument", function()
+      -- takes: key, descr, ref
+      local key, desc, ref = "argname", "thedescription", "reference"
+      cli:add_arg(key, desc, ref)
+      assert.are.equal(cli.required[1].key, key) -- make sure it got added
+      assert.is.error(function() cli:add_arg(key, desc, ref) end) -- this should blow up
+    end)
+    
+    it("tests add_opt() with a duplicate argument", function()
+      -- takes: key, descr, ref
+      local key, desc, ref, default = "-i", "thedescription", "reference", "default"
+      cli:add_opt(key, desc, ref, default)
+      assert.are.equal(cli.optional[1].key, "i") -- make sure it got added
+      assert.are.equal(cli.optional[1].expanded_key, "")
+      assert.is.error(function() cli:add_opt(key, desc, ref, default) end) -- this should blow up
+    end)
+
+
   end)   -- public functions
   
 end)
