@@ -120,9 +120,10 @@ function cli:set_name(name)
 end
 
 -- Used internally to lookup an entry using either its short or expanded keys
-function cli:__lookup(k, ek)
+function cli:__lookup(k, ek, t)
+  t = t or self.optional
   local _
-  for _,entry in ipairs(self.optional) do
+  for _,entry in ipairs(t) do
     if k  and entry.key == k then return entry end
     if ek and entry.expanded_key == ek then return entry end
   end
@@ -145,6 +146,11 @@ end
 --- `cli:add_arg("root", "path to where root scripts can be found", "root_path")`
 function cli:add_arg(key, desc, ref)
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
+  
+  if self:__lookup(key, nil, self.required) then
+    error("Duplicate argument: " .. key .. ", please rename one of them.")
+  end
+
   table.insert(self.required, { key = key, desc = desc, ref = ref or key, value = nil })
   if #key > self.maxlabel then self.maxlabel = #key end
 end
@@ -185,6 +191,12 @@ function cli:add_opt(key, desc, ref, default)
   if default == false and v ~= nil then
     error("A flag type option cannot have a value set; " .. key)
   end
+
+  -- guard against duplicates
+  if self:__lookup(k, ek) then
+    error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
+  end
+
   -- set defaults
   if v == nil then default = false end   -- no value, so its a flag
   if default == nil then default = "" end
