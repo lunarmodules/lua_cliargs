@@ -1,4 +1,4 @@
-require("busted")
+-- require("busted")
 
 -- some helper stuff for debugging
 local quoted = function(s)
