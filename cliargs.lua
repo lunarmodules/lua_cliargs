@@ -283,7 +283,8 @@ function cli:parse(noprint, dump)
     end
 
     if not optkey or not entry then
-      return cli_error("unknown/bad option; " .. opt, noprint)
+      local option_type = optval and "option" or "flag"
+      return cli_error("unknown/bad " .. option_type .. "; " .. opt, noprint)
     end
 
     table.remove(args,1)
