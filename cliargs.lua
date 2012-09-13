@@ -119,6 +119,17 @@ function cli:set_name(name)
   self.name = name
 end
 
+-- Used internally to lookup an entry using either its short or expanded keys
+function cli:__lookup(k, ek)
+  local _
+  for _,entry in ipairs(self.optional) do
+    if k and entry.key == k then return entry end
+    if ek and entry.expanded_key == ek then return entry end
+  end
+
+  return nil
+end
+
 --- Defines a required argument.
 --- Required arguments have no special notation and are order-sensitive.
 --- *Note:* if `@ref` is omitted, the value will be stored in `args[@key]`.
@@ -208,7 +219,6 @@ function cli:add_flag(key, desc, ref)
   self:add_opt(key, desc, ref, false)
 end
 
-
 --- Parses the arguments found in #arg and returns a table with the populated values.
 --- (NOTE: after succesful parsing, the module will delete itself to free resources)
 --- *Aliases: `parse_args`*
@@ -273,6 +283,14 @@ function cli:parse(noprint, dump)
         -- not a flag, value is in the next argument
         optval = args[1]
         table.remove(args, 1)
+      end
+    elseif optpref == "--" and (not optval) then
+      -- using the expanded-key notation with no value, it is possibly a flag
+      entry = self:__lookup(nil, optkey)
+      if entry and entry.flag then
+        optval = true
+      else
+        return cli_error("unknown/bad flag; " .. opt, noprint)
       end
     end
     
@@ -427,7 +445,7 @@ end
 
 
 -- finalize setup
-cli.version = "1.1-0"
+cli.version = "1.2-1"
 
 -- aliases
 cli.add_argument = cli.add_arg
@@ -439,6 +457,5 @@ if _TEST then
   cli.split = split
   cli.wordwrap = wordwrap
 end
-
 
 return cli
