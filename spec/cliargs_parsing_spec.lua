@@ -1,4 +1,4 @@
--- require("busted")
+local cli, defaults, result
 
 -- some helper stuff for debugging
 local quoted = function(s)
@@ -17,18 +17,27 @@ local dump = function(t)
 end
 
 -- fixture
-local function populate_required(cli)
+local function populate_required()
   cli:add_argument("INPUT", "path to the input file")
 
   return { ["INPUT"] = nil }
 end
-local function populate_optionals(cli)
+local function populate_optarg(cnt)
+  cnt = cnt or 1
+  cli:optarg("OUTPUT", "path to the output file", "./out", cnt)
+  if cnt == 1 then
+    return { OUTPUT = "./out" }
+  else
+    return { OUTPUT = {"./out"}}
+  end
+end
+local function populate_optionals()
   cli:add_option("-c, --compress=FILTER", "the filter to use for compressing output: gzip, lzma, bzip2, or none", "gzip")
   cli:add_option("-o FILE", "path to output file", "/dev/stdout")  
 
   return { c = "gzip", compress = "gzip", o = "/dev/stdout" }
 end
-local function populate_flags(cli)
+local function populate_flags()
   cli:add_flag("-d", "script will run in DEBUG mode")
   cli:add_flag("-v, --version", "prints the program's version and exits")
   cli:add_flag("--verbose", "the script output will be very verbose")  
@@ -36,14 +45,11 @@ local function populate_flags(cli)
   return { d = false, v = false, version = false, verbose = false }
 end
 
-local cli, defaults, result
 -- start tests
 describe("Testing cliargs library parsing commandlines", function()
 
   setup(function()
     _TEST = true
-    package.loaded.cliargs = false  -- Busted uses it, but must force to reload 
-    cli = require("cliargs")
   end)
 
   teardown(function()
@@ -51,18 +57,17 @@ describe("Testing cliargs library parsing commandlines", function()
   end)
   
   before_each(function()
-    cli.optional = {}
-    cli.required = {}
+    arg = nil
+    package.loaded.cliargs = false  -- Busted uses it, but must force to reload 
+    cli = require("cliargs")
   end)
 
   it("tests no arguments set, nor provided", function()
-    arg = nil
     result = cli:parse()
     assert.are.same(result, {})
   end)
   
   it("tests only optionals, nothing provided", function()
-    arg = nil
     defaults = populate_optionals(cli)
     result = cli:parse()
     assert.are.same(result, defaults)
@@ -191,6 +196,47 @@ describe("Testing cliargs library parsing commandlines", function()
     populate_optionals(cli)
     result = cli:parse(true --[[no print]])
     assert.is.falsy(result)
+  end)
+
+  it("tests optarg only, defaults, multiple allowed", function()
+    defaults = populate_optarg(3)
+    result,err = cli:parse(true --[[no print]])
+    assert.is.same(defaults, result)
+  end)
+
+  it("tests optarg only, defaults, 1 allowed", function()
+    defaults = populate_optarg(1)
+    result = cli:parse(true --[[no print]])
+    assert.is.same(defaults, result)
+  end)
+
+  it("tests optarg only, values, multiple allowed", function()
+    arg = {"/output1/", "/output2/"}
+    defaults = populate_optarg(3)
+    result = cli:parse(true --[[no print]])
+    assert.is.same(result, { OUTPUT = {"/output1/", "/output2/"}})
+  end)
+
+  it("tests optarg only, values, 1 allowed", function()
+    arg = {"/output/"}
+    defaults = populate_optarg(1)
+    result = cli:parse(true --[[no print]])
+    assert.is.same(result, { OUTPUT = "/output/" })
+  end)
+
+  it("tests optarg only, too many values", function()
+    arg = {"/output1/", "/output2/"}
+    defaults = populate_optarg(1)
+    result = cli:parse(true --[[no print]])
+    assert.is.same(result, nil)
+  end)
+
+  it("tests optarg only, too many values", function()
+    arg = {"/input/", "/output/"}
+    populate_required()
+    populate_optarg(1)
+    result = cli:parse(true --[[no print]])
+    assert.is.same(result, { INPUT = "/input/", OUTPUT = "/output/" })
   end)
 
 end)

@@ -267,7 +267,6 @@ end
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values,
 --- or nil + error message (--help option is considered an error and returns nil + help message)
 function cli:parse(noprint, dump)
-
   arg = arg or {}
   local args = {}
   for k,v in pairs(arg) do args[k] = v end  -- copy global args local
@@ -354,7 +353,7 @@ function cli:parse(noprint, dump)
   -- deal with the last optional argument
   while args[1] do
     if self.optargument.maxcount > 1 then
-      self.optargument.value = self.optargument.value
+      self.optargument.value = self.optargument.value or {}
       table.insert(self.optargument.value, args[1])
     else
       self.optargument.value = args[1]
