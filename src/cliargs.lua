@@ -110,6 +110,7 @@ cli = {
   name = "",
   required = {},
   optional = {},
+  optargument = {maxcount = 0},
   colsz = { 0, 0 }, -- column width, help text. Set to 0 for auto detect
   maxlabel = 0,
 }
@@ -133,44 +134,71 @@ end
 
 --- Defines a required argument.
 --- Required arguments have no special notation and are order-sensitive.
---- *Note:* if `@ref` is omitted, the value will be stored in `args[@key]`.
+--- *Note:* the value will be stored in `args[@key]`.
 --- *Aliases: `add_argument`*
 ---
 --- ### Parameters
 --- 1. **key**: the argument's "name" that will be displayed to the user
 --- 1. **desc**: a description of the argument
---- 1. **ref**: optional; the table key that will be used to hold the value of this argument
 ---
 --- ### Usage example
---- The following will parse the argument (if specified) and set its value in `args["root_path"]`:
---- `cli:add_arg("root", "path to where root scripts can be found", "root_path")`
-function cli:add_arg(key, desc, ref)
+--- The following will parse the argument (if specified) and set its value in `args["root"]`:
+--- `cli:add_arg("root", "path to where root scripts can be found")`
+function cli:add_arg(key, desc)
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
   
   if self:__lookup(key, nil, self.required) then
     error("Duplicate argument: " .. key .. ", please rename one of them.")
   end
 
-  table.insert(self.required, { key = key, desc = desc, ref = ref or key, value = nil })
+  table.insert(self.required, { key = key, desc = desc, value = nil })
   if #key > self.maxlabel then self.maxlabel = #key end
 end
 
---- Defines an optional argument.
+--- Defines an optional argument (or more than one).
+--- There can be only 1 optional argument, and is has to be the last one on the argumentlist.
+--- *Note:* the value will be stored in `args[@key]`. The value will be a 'string' if 'maxcount == 1',
+--- or a table if 'maxcount > 1'
+---
+--- ### Parameters
+--- 1. **key**: the argument's "name" that will be displayed to the user
+--- 1. **desc**: a description of the argument
+--- 1. **default**: *optional*; specify a default value (the default is "")
+--- 1. **maxcount**: *optional*; specify the maximum number of occurences allowed (default is 1)
+---
+--- ### Usage example
+--- The following will parse the argument (if specified) and set its value in `args["root"]`:
+--- `cli:add_arg("root", "path to where root scripts can be found", "", 2)`
+--- The value returned will be a table with at least 1 entry and a maximum of 2 entries
+function cli:optarg(key, desc, default, maxcount)
+  assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
+  default = default or ""
+  assert(type(default) == "string", "Default value must either be omitted or be a string")
+  maxcount = maxcount or 1
+  maxcount = tonumber(maxcount)
+  assert(maxcount and maxcount>0 and maxcount<1000,"Maxcount must be a number from 1 to 999")
+
+  self.optargument = { key = key, desc = desc, default = default, maxcount = maxcount, value = nil }
+  if #key > self.maxlabel then self.maxlabel = #key end
+end
+
+--- Defines an option.
 --- Optional arguments can use 3 different notations, and can accept a value.
 --- *Aliases: `add_option`*
 ---
 --- ### Parameters
 --- 1. **key**: the argument identifier, can be either `-key`, or `-key, --expanded-key`:
 --- if the first notation is used then a value can be defined after a space (`'-key VALUE'`),
---- if the 2nd notation is used then a value can be defined after an `=` (`'key, --expanded-key=VALUE'`).
+--- if the 2nd notation is used then a value can be defined after an `=` (`'-key, --expanded-key=VALUE'`).
+--- As a final option it is possible to only use the expanded key (eg. `'--expanded-key'`) both with and
+--- without a value specified.
 --- 1. **desc**: a description for the argument to be shown in --help
---- 1. **ref**: *optional*; override where the value will be stored, @see cli:add_arg
 --- 1. **default**: *optional*; specify a default value (the default is "")
 ---
 --- ### Usage example
---- The following option will be stored in `args["i"]` with a default value of `my_file.txt`:
---- `cli:add_option("-i, --input=FILE", "path to the input file", nil, "my_file.txt")`
-function cli:add_opt(key, desc, ref, default)
+--- The following option will be stored in `args["i"]` and `args["input"]` with a default value of `my_file.txt`:
+--- `cli:add_option("-i, --input=FILE", "path to the input file", "my_file.txt")`
+function cli:add_opt(key, desc, default)
 
   -- parameterize the key if needed, possible variations:
   -- 1. -key
@@ -183,7 +211,6 @@ function cli:add_opt(key, desc, ref, default)
   -- 8. --expanded=VALUE
 
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
-  assert(type(ref) == "string" or ref == nil, "Reference argument: expected a string or nil")
   assert(type(default) == "string" or default == nil or default == false, "Default argument: expected a string or nil")
 
   local k, ek, v = disect(key)
@@ -205,7 +232,6 @@ function cli:add_opt(key, desc, ref, default)
   local entry = {
     key = k,
     expanded_key = ek,
-    ref = ref or ek or k,
     desc = desc,
     default = default,
     label = key,
@@ -224,9 +250,8 @@ end
 --- ### Parameters
 -- 1. **key**: the argument's key
 -- 1. **desc**: a description of the argument to be displayed in the help listing
--- 1. **ref**: optionally override where the key which will hold the value
-function cli:add_flag(key, desc, ref)
-  self:add_opt(key, desc, ref, false)
+function cli:add_flag(key, desc)
+  self:add_opt(key, desc, false)
 end
 
 --- Parses the arguments found in #arg and returns a table with the populated values.
@@ -242,7 +267,6 @@ end
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values,
 --- or nil + error message (--help option is considered an error and returns nil + help message)
 function cli:parse(noprint, dump)
-
   arg = arg or {}
   local args = {}
   for k,v in pairs(arg) do args[k] = v end  -- copy global args local
@@ -275,7 +299,12 @@ function cli:parse(noprint, dump)
     if not optpref then
       break   -- no optional prefix, so options are done
     end
-
+    
+    if optkey:sub(-1,-1) == "=" then  -- check on a blank value eg. --insert=
+      optval = ""
+      optkey = optkey:sub(1,-2)
+    end
+    
     if optkey then
       entry = 
         self:__lookup(optpref == '-' and optkey or nil,
@@ -313,18 +342,49 @@ function cli:parse(noprint, dump)
   end
 
   -- missing any required arguments, or too many?
-  if #args ~= #self.required then
-    return cli_error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
+  if #args < #self.required or #args > #self.required + self.optargument.maxcount then
+    if self.optargument.maxcount > 0 then
+      return cli_error("bad number of arguments; " .. #self.required .."-" .. #self.required + self.optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
+    else
+      return cli_error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
+    end
   end
 
-  local results = {}
+  -- deal with required args here
   for i, entry in ipairs(self.required) do
-    results[entry.ref] = args[i]
+    entry.value = args[1]
+    table.remove(args, 1)
+  end
+  -- deal with the last optional argument
+  while args[1] do
+    if self.optargument.maxcount > 1 then
+      self.optargument.value = self.optargument.value or {}
+      table.insert(self.optargument.value, args[1])
+    else
+      self.optargument.value = args[1]
+    end
+    table.remove(args,1)
+  end
+  -- if necessary set the defaults for the last optional argument here
+  if self.optargument.maxcount > 0 and not self.optargument.value then
+    if self.optargument.maxcount == 1 then
+      self.optargument.value = self.optargument.default
+    else
+      self.optargument.value = { self.optargument.default }
+    end
+  end
+  
+  -- populate the results table
+  local results = {}
+  if self.optargument.maxcount > 0 then 
+    results[self.optargument.key] = self.optargument.value
+  end
+  for _, entry in pairs(self.required) do
+    results[entry.key] = entry.value
   end
   for _, entry in pairs(self.optional) do
     if entry.key then results[entry.key] = entry.value end
     if entry.expanded_key then results[entry.expanded_key] = entry.value end
-    results[entry.ref] = entry.value
   end
 
   if dump then
@@ -332,15 +392,29 @@ function cli:parse(noprint, dump)
     print("\nNumber of arguments: ", #arg)
     for i,v in ipairs(arg) do -- use gloabl 'arg' not the modified local 'args'
       print(string.format("%3i = '%s'", i, v))
-    end  -- copy global args local
+    end
   
     print("\n======= Parsed command line ===============")
     if #self.required > 0 then print("\nArguments:") end
     for i,v in ipairs(self.required) do
-      print("  " .. v.key .. string.rep(" ", self.maxlabel + 2 - #v.key) .. " => '" .. tostring(args[i]) .. "'")
+      print("  " .. v.key .. string.rep(" ", self.maxlabel + 2 - #v.key) .. " => '" .. v.value .. "'")
     end
     
-    if #self.optional > 0 then print("\nOptionals:") end
+    if self.optargument.maxcount > 0 then 
+      print("\nOptional arguments:")
+      print("  " .. self.optargument.key .. "; allowed are " .. tostring(self.optargument.maxcount) .. " arguments")
+      if self.optargument.maxcount == 1 then
+          print("  " .. self.optargument.key .. string.rep(" ", self.maxlabel + 2 - #self.optargument.key) .. " => '" .. self.optargument.key .. "'")
+      else
+        for i = 1, self.optargument.maxcount do
+          if self.optargument.value[i] then
+            print("  " .. tostring(i) .. string.rep(" ", self.maxlabel + 2 - #tostring(i)) .. " => '" .. tostring(self.optargument.value[i]) .. "'")
+          end
+        end
+      end
+    end
+    
+    if #self.optional > 0 then print("\nOptional parameters:") end
     local doubles = {}
     for _, v in pairs(self.optional) do 
       if not doubles[v] then
@@ -395,6 +469,13 @@ function cli:print_usage(noprint)
       msg = msg .. " " .. entry.key .. " "
     end
   end
+  if self.optargument.maxcount == 1 then
+    msg = msg .. " [" .. self.optargument.key .. "]"
+  elseif self.optargument.maxcount == 2 then
+    msg = msg .. " [" .. self.optargument.key .. "-1 [" .. self.optargument.key .. "-2]]"
+  elseif self.optargument.maxcount > 2 then
+    msg = msg .. " [" .. self.optargument.key .. "-1 [" .. self.optargument.key .. "-2 [...]]]"
+  end
 
   if not noprint then print(msg) end
   return msg
@@ -427,14 +508,18 @@ function cli:print_help(noprint)
   end
   
   if self.required[1] then
-    msg = msg .. "\nRequired arguments: \n"
+    msg = msg .. "\nARGUMENTS: \n"
     for _,entry in ipairs(self.required) do
-      append(entry.key, entry.desc)
+      append(entry.key, entry.desc .. " (required)")
     end
+  end
+  
+  if self.optargument.maxcount >0 then
+    append(self.optargument.key, self.optargument.desc .. " (optional, default: " .. self.optargument.default .. ")")
   end
 
   if self.optional[1] then
-    msg = msg .. "\nOptional arguments: \n"
+    msg = msg .. "\nOPTIONS: \n"
 
     for _,entry in ipairs(self.optional) do
       local desc = entry.desc
@@ -460,7 +545,10 @@ end
 
 
 -- finalize setup
-cli.version = "1.2-1"
+cli._COPYRIGHT   = "Copyright (C) 2011-2012 Ahmad Amireh"
+cli._LICENSE     = "The code is released under the MIT terms. Feel free to use it in both open and closed software as you please."
+cli._DESCRIPTION = "Commandline argument parser for Lua"
+cli._VERSION     = "cliargs 1.2-1"
 
 -- aliases
 cli.add_argument = cli.add_arg

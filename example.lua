@@ -6,9 +6,13 @@ cli:set_name("cli_example.lua")
   cli:add_argument("INPUT", "path to the input file")
   -- cli:add_argument("OUTPUT", "path to the output file") -- Using an alias for add_argument
 
--- Optional arguments:
-  cli:add_option("-c, --compress=FILTER", "the filter to use for compressing output: gzip, lzma, bzip2, or none", nil, "gzip")
-  cli:add_option("-o FILE", "path to output file", nil, "/dev/stdout")
+-- Optional (repetitive) arguments
+  -- only the last argument can be optional. Being set to maximum 3 optionals.
+  cli:optarg("OUTPUT", "multiple output paths", "/dev/stdout", 3)
+
+-- Optional parameters:
+  cli:add_option("-c, --compress=FILTER", "the filter to use for compressing output: gzip, lzma, bzip2, or none", "gzip")
+  cli:add_option("-o FILE", "path to output file", "/dev/stdout")
 
 -- Flags: a flag is a boolean option. Defaults to false
   -- A flag with short-key notation only
