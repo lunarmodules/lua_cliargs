@@ -239,6 +239,52 @@ describe("Testing cliargs library methods/functions", function()
       assert.is.error(function() cli:add_opt(key, desc, ref, default) end) -- this should blow up
     end)
 
+    describe("testing the 'noprint' options", function()
+
+      local old_print, touched
+    
+      setup(function()
+        old_print = print
+        local interceptor = function(...)
+          touched = true
+          return old_print(...)
+        end
+        print = interceptor
+      end)
+      
+      teardown(function()
+        print = (old_print or print)
+      end)
+
+      before_each(function()
+        touched = nil
+      end)
+      
+      after_each(function()
+      end)
+
+      it("tests whether print_help() does not print anything, if noprint is set (includes print_usage())", function()
+        local key, desc, ref, default = "-a", "thedescription", "reference", "default"
+        local noprint = true
+        cli:add_opt(key, desc, ref, default)
+        local res = cli:print_help(noprint)
+        assert.is.equal(type(res), "string")
+        assert.is.equal(nil, touched)
+      end)
+      
+      it("tests whether a parsing error through cli_error() does not print anything, if noprint is set", function()
+        -- generate a parse error
+        local key, desc, ref = "ARGUMENT", "thedescription", "reference"
+        cli:add_opt(key, desc, ref)
+        local noprint = true
+        arg = {"arg1", "arg2", "arg3", "arg4"} -- should fail for too many arguments
+        local res, err = cli:parse(noprint)
+        assert.is.equal(nil, res)
+        assert.is.equal(type(err), "string")
+        assert.is.equal(nil, touched)
+      end)
+      
+    end)
 
   end)   -- public functions
   
