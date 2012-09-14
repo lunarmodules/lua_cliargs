@@ -23,8 +23,8 @@ local function populate_required(cli)
   return { ["INPUT"] = nil }
 end
 local function populate_optionals(cli)
-  cli:add_option("-c, --compress=FILTER", "the filter to use for compressing output: gzip, lzma, bzip2, or none", nil, "gzip")
-  cli:add_option("-o FILE", "path to output file", nil, "/dev/stdout")  
+  cli:add_option("-c, --compress=FILTER", "the filter to use for compressing output: gzip, lzma, bzip2, or none", "gzip")
+  cli:add_option("-o FILE", "path to output file", "/dev/stdout")  
 
   return { c = "gzip", compress = "gzip", o = "/dev/stdout" }
 end
