@@ -239,4 +239,14 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.is.same(result, { INPUT = "/input/", OUTPUT = "/output/" })
   end)
 
+  it("tests clearing the default of an optional", function()
+    local err
+    arg = { "--compress=" }
+    populate_optionals(cli)
+    result, err = cli:parse(true --[[no print]])
+    assert.are.equal(nil,err)
+    assert.are_not.equal(nil,result)
+    assert.are.equal("", result.compress)
+  end)
+
 end)

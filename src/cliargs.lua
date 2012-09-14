@@ -299,7 +299,12 @@ function cli:parse(noprint, dump)
     if not optpref then
       break   -- no optional prefix, so options are done
     end
-
+    
+    if optkey:sub(-1,-1) == "=" then  -- check on a blank value eg. --insert=
+      optval = ""
+      optkey = optkey:sub(1,-2)
+    end
+    
     if optkey then
       entry = 
         self:__lookup(optpref == '-' and optkey or nil,
