@@ -85,6 +85,13 @@ describe("Testing cliargs library methods/functions", function()
       assert.is.same(result, expected)
     end)
 
+    it("tests the optarg() method", function()
+      local key, desc, default, maxcount = "LastArg", "The lastarg description", "lastarg default", 3
+      local expected = { key = key, desc = desc, default = default, maxcount = maxcount}
+      cli:optarg(key, desc, default, maxcount)
+      assert.are.same(cli.optargument, expected)
+    end)
+
   end)   -- private functions
   
   describe("testing public functions", function()
@@ -217,7 +224,7 @@ describe("Testing cliargs library methods/functions", function()
       --assert.are.equal(cli.optional[1].expanded_key, "")
       assert.is.error(function() cli:add_opt(key, desc, default) end) -- this should blow up
     end)
-
+    
     describe("testing the 'noprint' options", function()
 
       local old_print, touched

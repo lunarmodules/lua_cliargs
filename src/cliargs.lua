@@ -102,8 +102,6 @@ function cli_error(msg, noprint)
   return nil, msg
 end
 
-local optargument = {}
-
 -- -------- --
 -- CLI Main --
 -- -------- --
@@ -112,6 +110,7 @@ cli = {
   name = "",
   required = {},
   optional = {},
+  optargument = {maxcount = 0},
   colsz = { 0, 0 }, -- column width, help text. Set to 0 for auto detect
   maxlabel = 0,
 }
@@ -179,11 +178,8 @@ function cli:optarg(key, desc, default, maxcount)
   maxcount = tonumber(maxcount)
   assert(maxcount and maxcount>0 and maxcount<1000,"Maxcount must be a number from 1 to 999")
 
-  if self:__lookup(key, nil, self.required) then
-    error("Duplicate argument: " .. key .. ", please rename one of them.")
-  end
-
-  optarg = { key = key, desc = desc, default = default, maxcount = maxcount, value = nil }
+  self.optargument = { key = key, desc = desc, default = default, maxcount = maxcount, value = nil }
+  if #key > self.maxlabel then self.maxlabel = #key end
 end
 
 --- Defines an option.
@@ -342,13 +338,45 @@ function cli:parse(noprint, dump)
   end
 
   -- missing any required arguments, or too many?
-  if #args ~= #self.required then
-    return cli_error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
+  if #args < #self.required or #args > #self.required + self.optargument.maxcount then
+    if self.optargument.maxcount > 0 then
+      return cli_error("bad number of arguments; " .. #self.required .."-" .. #self.required + self.optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
+    else
+      return cli_error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
+    end
   end
 
-  local results = {}
+  -- deal with required args here
   for i, entry in ipairs(self.required) do
-    results[entry.key] = args[i]
+    entry.value = args[1]
+    table.remove(args, 1)
+  end
+  -- deal with the last optional argument
+  while args[1] do
+    if self.optargument.maxcount > 1 then
+      self.optargument.value = self.optargument.value
+      table.insert(self.optargument.value, args[1])
+    else
+      self.optargument.value = args[1]
+    end
+    table.remove(args,1)
+  end
+  -- if necessary set the defaults for the last optional argument here
+  if self.optargument.maxcount > 0 and not self.optargument.value then
+    if self.optargument.maxcount == 1 then
+      self.optargument.value = self.optargument.default
+    else
+      self.optargument.value = { self.optargument.default }
+    end
+  end
+  
+  -- populate the results table
+  local results = {}
+  if self.optargument.maxcount > 0 then 
+    results[self.optargument.key] = self.optargument.value
+  end
+  for _, entry in pairs(self.required) do
+    results[entry.key] = entry.value
   end
   for _, entry in pairs(self.optional) do
     if entry.key then results[entry.key] = entry.value end
@@ -360,7 +388,7 @@ function cli:parse(noprint, dump)
     print("\nNumber of arguments: ", #arg)
     for i,v in ipairs(arg) do -- use gloabl 'arg' not the modified local 'args'
       print(string.format("%3i = '%s'", i, v))
-    end  -- copy global args local
+    end
   
     print("\n======= Parsed command line ===============")
     if #self.required > 0 then print("\nArguments:") end
@@ -368,7 +396,19 @@ function cli:parse(noprint, dump)
       print("  " .. v.key .. string.rep(" ", self.maxlabel + 2 - #v.key) .. " => '" .. tostring(args[i]) .. "'")
     end
     
-    if #self.optional > 0 then print("\nOptionals:") end
+    if #self.optargument.maxcount > 0 then 
+      print("\nOptional arguments:")
+      print("  " .. self.optargument.key .. "; allowed are " .. tostring(self.optargument.maxcount) .. " arguments")
+      if self.optargument.maxcount == 1 then
+          print("  " .. self.optargument.key .. string.rep(" ", self.maxlabel + 2 - #self.optargument.key) .. " => '" .. self.optargument.key .. "'")
+      else
+        for i = 1, self.optargument.maxcount do
+          print("  " .. tostring(i) .. string.rep(" ", self.maxlabel + 2 - #tostring(i)) .. " => '" .. tostring(self.optargument.value[i]) .. "'")
+        end
+      end
+    end
+    
+    if #self.optional > 0 then print("\nOptional parameters:") end
     local doubles = {}
     for _, v in pairs(self.optional) do 
       if not doubles[v] then
@@ -423,6 +463,13 @@ function cli:print_usage(noprint)
       msg = msg .. " " .. entry.key .. " "
     end
   end
+  if self.optargument.maxcount == 1 then
+    msg = msg .. " [" .. self.optargument.key .. "]"
+  elseif self.optargument.maxcount == 2 then
+    msg = msg .. " [" .. self.optargument.key .. "1 [" .. self.optargument.key .. "2]]"
+  elseif self.optargument.maxcount > 2 then
+    msg = msg .. " [" .. self.optargument.key .. "1 [" .. self.optargument.key .. "2] ... ]"
+  end
 
   if not noprint then print(msg) end
   return msg
@@ -460,9 +507,13 @@ function cli:print_help(noprint)
       append(entry.key, entry.desc)
     end
   end
+  
+  if self.optargument.maxcount >0 then
+    append(self.optargument.key, self.optargument.desc .. " (optional, default: " .. self.optargument.default .. ")")
+  end
 
   if self.optional[1] then
-    msg = msg .. "\nOptional arguments: \n"
+    msg = msg .. "\nOptional parameters: \n"
 
     for _,entry in ipairs(self.optional) do
       local desc = entry.desc
@@ -488,7 +539,10 @@ end
 
 
 -- finalize setup
-cli.version = "1.2-1"
+cli._COPYRIGHT   = "Copyright (C) 2011-2012 Ahmad Amireh"
+cli._LICENSE     = "The code is released under the MIT terms. Feel free to use it in both open and closed software as you please."
+cli._DESCRIPTION = "Commandline argument parser for Lua"
+cli._VERSION     = "cliargs 1.2-1"
 
 -- aliases
 cli.add_argument = cli.add_arg
@@ -499,7 +553,6 @@ cli.parse_args = cli.parse    -- backward compatibility
 if _TEST then
   cli.split = split
   cli.wordwrap = wordwrap
-  cli.optargument = optargument
 end
 
 return cli
