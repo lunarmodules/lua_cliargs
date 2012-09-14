@@ -102,6 +102,8 @@ function cli_error(msg, noprint)
   return nil, msg
 end
 
+local optargument = {}
+
 -- -------- --
 -- CLI Main --
 -- -------- --
@@ -154,7 +156,37 @@ function cli:add_arg(key, desc)
   if #key > self.maxlabel then self.maxlabel = #key end
 end
 
---- Defines an optional argument.
+--- Defines an optional argument (or more than one).
+--- There can be only 1 optional argument, and is has to be the last one on the argumentlist.
+--- *Note:* the value will be stored in `args[@key]`. The value will be a 'string' if 'maxcount == 1',
+--- or a table if 'maxcount > 1'
+---
+--- ### Parameters
+--- 1. **key**: the argument's "name" that will be displayed to the user
+--- 1. **desc**: a description of the argument
+--- 1. **default**: *optional*; specify a default value (the default is "")
+--- 1. **maxcount**: *optional*; specify the maximum number of occurences allowed (default is 1)
+---
+--- ### Usage example
+--- The following will parse the argument (if specified) and set its value in `args["root"]`:
+--- `cli:add_arg("root", "path to where root scripts can be found", "", 2)`
+--- The value returned will be a table with at least 1 entry and a maximum of 2 entries
+function cli:optarg(key, desc, default, maxcount)
+  assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
+  default = default or ""
+  assert(type(default) == "string", "Default value must either be omitted or be a string")
+  maxcount = maxcount or 1
+  maxcount = tonumber(maxcount)
+  assert(maxcount and maxcount>0 and maxcount<1000,"Maxcount must be a number from 1 to 999")
+
+  if self:__lookup(key, nil, self.required) then
+    error("Duplicate argument: " .. key .. ", please rename one of them.")
+  end
+
+  optarg = { key = key, desc = desc, default = default, maxcount = maxcount, value = nil }
+end
+
+--- Defines an option.
 --- Optional arguments can use 3 different notations, and can accept a value.
 --- *Aliases: `add_option`*
 ---
@@ -467,6 +499,7 @@ cli.parse_args = cli.parse    -- backward compatibility
 if _TEST then
   cli.split = split
   cli.wordwrap = wordwrap
+  cli.optargument = optargument
 end
 
 return cli
