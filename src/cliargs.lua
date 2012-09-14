@@ -392,17 +392,19 @@ function cli:parse(noprint, dump)
     print("\n======= Parsed command line ===============")
     if #self.required > 0 then print("\nArguments:") end
     for i,v in ipairs(self.required) do
-      print("  " .. v.key .. string.rep(" ", self.maxlabel + 2 - #v.key) .. " => '" .. tostring(args[i]) .. "'")
+      print("  " .. v.key .. string.rep(" ", self.maxlabel + 2 - #v.key) .. " => '" .. v.value .. "'")
     end
     
-    if #self.optargument.maxcount > 0 then 
+    if self.optargument.maxcount > 0 then 
       print("\nOptional arguments:")
       print("  " .. self.optargument.key .. "; allowed are " .. tostring(self.optargument.maxcount) .. " arguments")
       if self.optargument.maxcount == 1 then
           print("  " .. self.optargument.key .. string.rep(" ", self.maxlabel + 2 - #self.optargument.key) .. " => '" .. self.optargument.key .. "'")
       else
         for i = 1, self.optargument.maxcount do
-          print("  " .. tostring(i) .. string.rep(" ", self.maxlabel + 2 - #tostring(i)) .. " => '" .. tostring(self.optargument.value[i]) .. "'")
+          if self.optargument.value[i] then
+            print("  " .. tostring(i) .. string.rep(" ", self.maxlabel + 2 - #tostring(i)) .. " => '" .. tostring(self.optargument.value[i]) .. "'")
+          end
         end
       end
     end
@@ -465,9 +467,9 @@ function cli:print_usage(noprint)
   if self.optargument.maxcount == 1 then
     msg = msg .. " [" .. self.optargument.key .. "]"
   elseif self.optargument.maxcount == 2 then
-    msg = msg .. " [" .. self.optargument.key .. "1 [" .. self.optargument.key .. "2]]"
+    msg = msg .. " [" .. self.optargument.key .. "-1 [" .. self.optargument.key .. "-2]]"
   elseif self.optargument.maxcount > 2 then
-    msg = msg .. " [" .. self.optargument.key .. "1 [" .. self.optargument.key .. "2] ... ]"
+    msg = msg .. " [" .. self.optargument.key .. "-1 [" .. self.optargument.key .. "-2 [...]]]"
   end
 
   if not noprint then print(msg) end
@@ -501,9 +503,9 @@ function cli:print_help(noprint)
   end
   
   if self.required[1] then
-    msg = msg .. "\nRequired arguments: \n"
+    msg = msg .. "\nARGUMENTS: \n"
     for _,entry in ipairs(self.required) do
-      append(entry.key, entry.desc)
+      append(entry.key, entry.desc .. " (required)")
     end
   end
   
@@ -512,7 +514,7 @@ function cli:print_help(noprint)
   end
 
   if self.optional[1] then
-    msg = msg .. "\nOptional parameters: \n"
+    msg = msg .. "\nOPTIONS: \n"
 
     for _,entry in ipairs(self.optional) do
       local desc = entry.desc
