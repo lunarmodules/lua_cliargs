@@ -133,25 +133,24 @@ end
 
 --- Defines a required argument.
 --- Required arguments have no special notation and are order-sensitive.
---- *Note:* if `@ref` is omitted, the value will be stored in `args[@key]`.
+--- *Note:* the value will be stored in `args[@key]`.
 --- *Aliases: `add_argument`*
 ---
 --- ### Parameters
 --- 1. **key**: the argument's "name" that will be displayed to the user
 --- 1. **desc**: a description of the argument
---- 1. **ref**: optional; the table key that will be used to hold the value of this argument
 ---
 --- ### Usage example
---- The following will parse the argument (if specified) and set its value in `args["root_path"]`:
---- `cli:add_arg("root", "path to where root scripts can be found", "root_path")`
-function cli:add_arg(key, desc, ref)
+--- The following will parse the argument (if specified) and set its value in `args["root"]`:
+--- `cli:add_arg("root", "path to where root scripts can be found")`
+function cli:add_arg(key, desc)
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
   
   if self:__lookup(key, nil, self.required) then
     error("Duplicate argument: " .. key .. ", please rename one of them.")
   end
 
-  table.insert(self.required, { key = key, desc = desc, ref = ref or key, value = nil })
+  table.insert(self.required, { key = key, desc = desc, value = nil })
   if #key > self.maxlabel then self.maxlabel = #key end
 end
 
@@ -162,15 +161,16 @@ end
 --- ### Parameters
 --- 1. **key**: the argument identifier, can be either `-key`, or `-key, --expanded-key`:
 --- if the first notation is used then a value can be defined after a space (`'-key VALUE'`),
---- if the 2nd notation is used then a value can be defined after an `=` (`'key, --expanded-key=VALUE'`).
+--- if the 2nd notation is used then a value can be defined after an `=` (`'-key, --expanded-key=VALUE'`).
+--- As a final option it is possible to only use the expanded key (eg. `'--expanded-key'`) both with and
+--- without a value specified.
 --- 1. **desc**: a description for the argument to be shown in --help
---- 1. **ref**: *optional*; override where the value will be stored, @see cli:add_arg
 --- 1. **default**: *optional*; specify a default value (the default is "")
 ---
 --- ### Usage example
---- The following option will be stored in `args["i"]` with a default value of `my_file.txt`:
---- `cli:add_option("-i, --input=FILE", "path to the input file", nil, "my_file.txt")`
-function cli:add_opt(key, desc, ref, default)
+--- The following option will be stored in `args["i"]` and `args["input"]` with a default value of `my_file.txt`:
+--- `cli:add_option("-i, --input=FILE", "path to the input file", "my_file.txt")`
+function cli:add_opt(key, desc, default)
 
   -- parameterize the key if needed, possible variations:
   -- 1. -key
@@ -183,7 +183,6 @@ function cli:add_opt(key, desc, ref, default)
   -- 8. --expanded=VALUE
 
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
-  assert(type(ref) == "string" or ref == nil, "Reference argument: expected a string or nil")
   assert(type(default) == "string" or default == nil or default == false, "Default argument: expected a string or nil")
 
   local k, ek, v = disect(key)
@@ -205,7 +204,6 @@ function cli:add_opt(key, desc, ref, default)
   local entry = {
     key = k,
     expanded_key = ek,
-    ref = ref or ek or k,
     desc = desc,
     default = default,
     label = key,
@@ -224,9 +222,8 @@ end
 --- ### Parameters
 -- 1. **key**: the argument's key
 -- 1. **desc**: a description of the argument to be displayed in the help listing
--- 1. **ref**: optionally override where the key which will hold the value
-function cli:add_flag(key, desc, ref)
-  self:add_opt(key, desc, ref, false)
+function cli:add_flag(key, desc)
+  self:add_opt(key, desc, false)
 end
 
 --- Parses the arguments found in #arg and returns a table with the populated values.
@@ -319,12 +316,11 @@ function cli:parse(noprint, dump)
 
   local results = {}
   for i, entry in ipairs(self.required) do
-    results[entry.ref] = args[i]
+    results[entry.key] = args[i]
   end
   for _, entry in pairs(self.optional) do
     if entry.key then results[entry.key] = entry.value end
     if entry.expanded_key then results[entry.expanded_key] = entry.value end
-    results[entry.ref] = entry.value
   end
 
   if dump then
