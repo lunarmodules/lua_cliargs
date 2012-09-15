@@ -1,4 +1,6 @@
 language: erlang
+otp_release:
+   - R15B02
 
 env:
   - LUA=""
@@ -11,18 +13,6 @@ branches:
 install:
   - sudo apt-get install luajit
   - sudo apt-get install luarocks
-  - sudo luarocks install luafilesystem
-  - git clone git://github.com/Olivine-Labs/say.git
-  - cd say
-  - sudo luarocks make
-  - cd ../
-  - git clone git://github.com/Olivine-Labs/luassert.git
-  - cd luassert
-  - sudo luarocks make
-  - cd ../
-  - git clone git://github.com/Olivine-Labs/busted.git
-  - cd busted
-  - sudo luarocks make
-  - cd ../
+  - sudo luarocks install busted
 
 script: "busted spec"
