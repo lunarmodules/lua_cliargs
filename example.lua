@@ -40,4 +40,20 @@ end
 
 print("Input file: " .. args["INPUT"])
 print("Output file: " .. args["o"])
-print("Compressing? " .. (args["c"] == "none" and "No" or "Yes, using " .. args['c']))
+
+if #args.OUTPUT > 0 then
+  print("Additional outputs:")
+  if type(args.OUTPUT) == "string" then
+    args.OUTPUT = { args.OUTPUT }
+  end
+
+  for i, out in ipairs(args.OUTPUT) do
+    print("  " .. i .. ". " .. out)
+  end
+end
+
+if #args['c'] == 0 or args['c'] == 'none' then
+  print("Won't be compressing")
+else
+  print("Compressing using " .. args['c'])
+end
