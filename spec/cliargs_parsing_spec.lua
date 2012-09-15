@@ -245,7 +245,10 @@ describe("Testing cliargs library parsing commandlines", function()
     populate_optionals(cli)
     result, err = cli:parse(true --[[no print]])
     assert.are.equal(nil,err)
-    assert.are_not.equal(nil,result)
+    -- are_not.equal is not working when comparing against a nil as
+    -- of luassert-1.2-1, using is.truthy instead for now
+    -- assert.are_not.equal(nil,result)
+    assert.is.truthy(result)
     assert.are.equal("", result.compress)
   end)
 
