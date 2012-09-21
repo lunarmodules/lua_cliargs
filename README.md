@@ -6,83 +6,48 @@ cliargs is a command-line argument parser for Lua. It supports 4 types of argume
 
 1. required arguments
 1. optional arguments with different notations: `-short-key VALUE` and/or `--expanded-key=VALUE`
-1. optional "flag" arguments (on/off options)
+1. optional "flag" arguments (on/off options) with notations: `-short-key` and/or `--expanded-key`
 1. a single optional "splat" argument which can be repeated (must be the last argument)
 
 Options can have default values of any kind; strings, nil, numbers, or tables.
 
-> **Warning: Backward Compatibility Breakage**
-> 
-> As of version 2.0, support for overridden keys (or references) has been dropped.
-> Since duplicate-keyed options are no longer allowed, you must access each option
-> by its key:
->
->  1. `-short-key` notations, like `-i`, are accessed using `my_args.i`
->  2. `--expanded-key` notations, like `--input`, are accessed using `my_args.input`
->  3. mixed notations such as `-i, --input` are accessed using either key
-
 ## Usage Example
+See `example.lua` for an example on how to use the parser.
+Try it with the following sample command lines;
 
-> See `example.lua` for a more up-to-date reference.
-
-The following script will define 4 arguments for the program called `test.lua`:
-
-* a required argument identified as `ROOT`
-* an optional argument that points to an output file which can be specified using `-o FILE`
-* another optional argument that points to an input file which can be specified using two different notations:
- * `-i FILE`
- * `--input=FILE`
-* an optional flag argument `-v` or `--version` whose value will be set to `true` if it was specified
-
-```lua
-local cli = require "cliargs"
-cli:set_name("example.lua")
-cli:add_argument("ROOT", "path to where root scripts can be found")
-cli:add_option("-o FILE", "path to the output file")
-cli:add_option("-i, --input=FILE", "path to an input file", "/dev/stdin")
-cli:add_flag("-v, --version", "prints the program's version and exits")
-
-local args = cli:parse_args()
-if not args then
-  -- something wrong happened and an error was printed
-  return
-end
-
--- argument parsing was successful, arguments can be found in `args`
-for k,item in pairs(args) do print(k .. " => " .. tostring(item)) end
-
--- checking for flags: is -v or --version set?
-if args["v"] then
-  return print("example.lua: version 0.0.0")
-end
-
-print("Input file: " .. args.input)
-print("Output file: " .. args["o"])
+```bash
+example.lua --help
+example.lua -o myfile -d --compress=gzip inputfile
+example.lua --__DUMP__ -o myfile -d --compress=gzip inputfile
 ```
 
 **Accessing arguments**
 
-All types of arguments must specify a *key*. In the case of required arguments, the keys are only used in the help listings. However, for optional arguments, they are mandatory and only the *--extended-key* notation is optional.
+All types of arguments must specify a *key*. In the case of required arguments, the keys are only used in the help listings. However, for optional arguments, they are mandatory (either *--key* or *--extended-key* must be specified, the other is optional).
 
-Accessing argument values can be done using the key with the leading dashes omitted (`-` or `--`). When defining an option to use both the -short-key and --expanded-key notations, you can access it using either key; they'll both be defined.
+The `parse()`  method will parse the command line and return a table with results. Accessing argument or option values in this table can be done using the key with the leading dashes omitted (`-` or `--`). When defining an option (or a flag) , you can access it using either key or expanded-key; they'll both be defined.
 
 ## Help listings `--help`
 
 A help listing will be automatically generated and accessed using the `--help` argument. You can also force its display in the code using `cli:print_help()`.
 
-This is how it looks like for our example:
+This is the result for our example:
 
 ```bash
-Usage: test.lua [OPTIONS]  root 
+Usage: cli_example.lua [OPTIONS]  INPUT  [OUTPUT-1 [OUTPUT-2 [...]]]
 
-Required arguments: 
-  ROOT                 path to where root scripts can be found
+ARGUMENTS:
+  INPUT                 path to the input file (required)
+  OUTPUT                multiple output paths (optional, default:
+                        /dev/stdout)
 
-Optional arguments: 
-  -o FILE              path to the output file (default: ) 
-  -i, --input=FILE     path to an input file (default: ) 
-  -v, --version        prints the program's version and exits 
-```
+OPTIONS:
+  -c, --compress=FILTER the filter to use for compressing output: gzip,
+                        lzma, bzip2, or none (default: gzip)
+  -o FILE               path to output file (default: /dev/stdout)
+  -d                    script will run in DEBUG mode
+  -v, --version         prints the program's version and exits
+  --verbose             the script output will be very verbose```
 
 ## Validations
 
@@ -93,30 +58,29 @@ From a parsing point of view, there are 3 cases that need to be handled which ar
 **Missing a required argument**
 
 ```bash
->> lua test.lua
-test.lua: error: missing arguments, at least 1 argument(s) must be specified; re-run with --help for usage.
-Usage: test.lua [OPTIONS]  root
+>> lua example.lua
+cli_example.lua: error: bad number of arguments; 1-4 argument(s) must be specified, not 0; re-run with --help for usage.
 ```
 
 **Missing value for an optional argument**
 
 ```bash
->> lua test.lua /my_root -i
-test.lua: error: missing argument value in '-i FILE'; re-run with --help for usage.
+>> example.lua --compress inputfile
+cli_example.lua: error: option --compress requires a value to be set; re-run with --help for usage.
 ```
 
 **Unknown arguments**
 
 ```bash
->> lua test.lua /my_root -f
-test.lua: error: unknown option -f; re-run with --help for usage.
+>> example.lua -f inputfile
+cli_example.lua: error: unknown/bad flag; -f; re-run with --help for usage.
 ```
 
 ### Some sanity guards
 
 In the following cases, `cliargs` will report an error to you and terminate the running script:
 
-1. flag options can not accept a value: `cli:add_flag('-v VERSION')`
+1. flag options can not accept a value. For example: `cli:add_flag('-v VERSION')` will return an error
 2. duplicate keys are not allowed: defining two options with the key `--input` will be rejected
 
 ## Tests
@@ -138,24 +102,35 @@ If you come across a bug and you'd like to patch it, please fork the repository,
 To deploy a new version, you must bump the rockspec and do a few things:
 
 1. rename the rockspec to reflect the new version (by incrementing the minor version, for example)
-2. edit the rockspec to point to the tarball that contains the new version (which also must follow the same naming convention)
-3. bump the version stored in the variable `cli._VERSION` in the bottom of the script `src/cliargs.lua`
-4. create the tarball using the helper bash script `tarballs/create_tarball.sh`: invoke it with two parameters: the MAJOR version and the MINOR one, ie: `./create_tarball.sh 1 4` to create a 1.4 versioned tarball of the repository
-5. add the new tarball to the Downloads of the repository so Luarocks can find it
+1. edit the rockspec to point to the tarball that contains the new version (which also must follow the same naming convention)
+1. bump the version stored in the variable `cli._VERSION` in the bottom of the script `src/cliargs.lua`
+1. create the tarball using the helper bash script `tarballs/create_tarball.sh`: invoke it with two parameters: the MAJOR version and the MINOR one, ie: `./create_tarball.sh 1 4` to create a 1.4 versioned tarball of the repository
+1. add the new tarball to the Downloads of the repository so Luarocks can find it
 
 ## Thanks to
 
 Many thanks to everyone who reported bugs, provided fixes, and added entirely new features:
 
 1. [Thijs Schreijer](https://github.com/Tieske)
-2. [Jack Lawson](https://github.com/ajacksified)
-3. [Robert Andrew Ditthardt](https://github.com/DorianGray)
+1. [Jack Lawson](https://github.com/ajacksified)
+1. [Robert Andrew Ditthardt](https://github.com/DorianGray)
 
 *If I missed you, don't hesitate to update this file or just email me.*
 
 ## Reference
 
 A function reference was generated using [LunaDoc](http://jgm.github.com/lunamark/lunadoc.1.html) which can be found [here](http://lua-cliargs.docs.mxvt.net).
+
+## Changelog
+Changes in 2.0.0 from 1.x.x
+
+1. added the 'splat' argument, an optional repetitive argument for which a maximum number of occurrences can be set
+1. removed the reference, arguments are now solely returned by their key/expanded-key (BREAKING!)
+1. removed object overhead and the `new()` method as the library will only be used once on program start-up (BREAKING!)
+1. after parsing completed successfully, the library will effectively delete itself to free resources (BREAKING!)
+1. option/flag is now allowed with only an expanded-key defined
+1. Debug aid implemented; adding a first option `--__DUMP__`, will dump the results of parsing the command line. Especially for testing how to use the commandline with arguments containing spaces either quoted or not.
+1. the `print_usage()` and `print_help()` now have a 'noprint' parameter that will not print the message, but return it as an error string (`nil + errmsg`)
 
 ## License
 
