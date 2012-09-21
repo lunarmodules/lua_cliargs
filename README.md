@@ -47,7 +47,8 @@ OPTIONS:
   -o FILE               path to output file (default: /dev/stdout)
   -d                    script will run in DEBUG mode
   -v, --version         prints the program's version and exits
-  --verbose             the script output will be very verbose```
+  --verbose             the script output will be very verbose
+```
 
 ## Validations
 
