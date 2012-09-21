@@ -1,3 +1,12 @@
+--[[
+
+Try this file with the following commands lines;
+  example.lua --help
+  example.lua -o myfile -d --compress=gzip inputfile
+  example.lua --__DUMP__ -o myfile -d --compress=gzip inputfile
+
+--]]
+
 local cli = require "cliargs"
 
 cli:set_name("cli_example.lua")
@@ -22,7 +31,7 @@ cli:set_name("cli_example.lua")
   -- A flag with --expanded-key notation only
   cli:add_flag("--verbose", "the script output will be very verbose")
 
--- Parses from _G['arg'], it's destructive; the table will be empty when the parser is done
+-- Parses from _G['arg']
 local args = cli:parse_args()
 
 if not args then
@@ -31,6 +40,7 @@ if not args then
 end
 
 -- argument parsing was successful, arguments can be found in `args`
+-- upon successful parsing cliargs will delete itslef to free resources
 -- for k,item in pairs(args) do print(k .. " => " .. tostring(item)) end
 
 -- checking for flags: is -v or --version set?

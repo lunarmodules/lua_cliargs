@@ -331,8 +331,12 @@ function cli:parse(noprint, dump)
     elseif optpref == "--" and (not optval) then
       -- using the expanded-key notation with no value, it is possibly a flag
       entry = self:__lookup(nil, optkey)
-      if entry and entry.flag then
-        optval = true
+      if entry then
+        if entry.flag then
+          optval = true
+        else
+          return cli_error("option --" .. optkey .. " requires a value to be set", noprint)
+        end
       else
         return cli_error("unknown/bad flag; " .. opt, noprint)
       end
