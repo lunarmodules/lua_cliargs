@@ -328,14 +328,20 @@ function cli:parse(noprint, dump)
         optval = args[1]
         table.remove(args, 1)
       end
-    elseif optpref == "--" and (not optval) then
-      -- using the expanded-key notation with no value, it is possibly a flag
+    elseif optpref == "--" then
+      -- using the expanded-key notation
       entry = self:__lookup(nil, optkey)
       if entry then
         if entry.flag then
-          optval = true
+          if optval then
+            return cli_error("flag --" .. optkey .. " does not take a value", noprint)
+          else
+            optval = true
+          end
         else
-          return cli_error("option --" .. optkey .. " requires a value to be set", noprint)
+          if not optval then
+            return cli_error("option --" .. optkey .. " requires a value to be set", noprint)
+          end
         end
       else
         return cli_error("unknown/bad flag; " .. opt, noprint)

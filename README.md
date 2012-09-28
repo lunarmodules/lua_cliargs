@@ -9,7 +9,7 @@ cliargs is a command-line argument parser for Lua. It supports 4 types of argume
 1. optional "flag" arguments (on/off options) with notations: `-short-key` and/or `--expanded-key`
 1. a single optional "splat" argument which can be repeated (must be the last argument)
 
-Options can have default values of any kind; strings, nil, numbers, or tables.
+Optional arguments can have default values (strings), flags always default to 'true'.
 
 ## Usage Example
 See `example.lua` for an example on how to use the parser.

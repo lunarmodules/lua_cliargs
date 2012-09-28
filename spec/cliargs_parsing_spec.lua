@@ -252,4 +252,13 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.are.equal("", result.compress)
   end)
 
+  it("tests parsing a flag (expanded-key) with a value provided", function()
+    arg = { "--verbose=something" }
+    defaults = populate_flags(cli)
+    defaults.verbose = true
+    local result, err = cli:parse(true --[[no print]])
+    assert(result == nil, "Adding a value to a flag must error out")
+    assert(type(err) == "string", "Expected an error string")
+  end)
+
 end)
