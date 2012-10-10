@@ -48,14 +48,6 @@ end
 -- start tests
 describe("Testing cliargs library parsing commandlines", function()
 
-  setup(function()
-    _TEST = true
-  end)
-
-  teardown(function()
-    _TEST = false
-  end)
-  
   before_each(function()
     arg = nil
     package.loaded.cliargs = false  -- Busted uses it, but must force to reload 
