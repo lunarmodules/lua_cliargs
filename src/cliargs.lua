@@ -73,7 +73,7 @@ end
 
 local function disect(key)
   -- characters allowed are a-z, A-Z, 0-9
-  -- extended + values also allow; # @ _ + - 
+  -- extended + values also allow; # @ _ + -
   local k, ek, v
   local dummy
   -- if there is no comma, between short and extended, add one
@@ -146,7 +146,7 @@ end
 --- `cli:add_arg("root", "path to where root scripts can be found")`
 function cli:add_arg(key, desc)
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
-  
+
   if self:__lookup(key, nil, self.required) then
     error("Duplicate argument: " .. key .. ", please rename one of them.")
   end
@@ -214,7 +214,7 @@ function cli:add_opt(key, desc, default)
   assert(type(default) == "string" or default == nil or default == false, "Default argument: expected a string or nil")
 
   local k, ek, v = disect(key)
-  
+
   if default == false and v ~= nil then
     error("A flag type option cannot have a value set; " .. key)
   end
@@ -227,7 +227,7 @@ function cli:add_opt(key, desc, default)
   -- set defaults
   if v == nil then default = false end   -- no value, so its a flag
   if default == nil then default = "" end
-  
+
   -- below description of full entry record, nils included for reference
   local entry = {
     key = k,
@@ -241,7 +241,7 @@ function cli:add_opt(key, desc, default)
 
   table.insert(self.optional, entry)
   if #key > self.maxlabel then self.maxlabel = #key end
-  
+
 end
 
 --- Define a flag argument (on/off). This is a convenience helper for cli.add_opt().
@@ -260,7 +260,7 @@ end
 ---
 --- ### Parameters
 --- 1. **noprint**: set this flag to prevent any information (error or help info) from being printed
---- 1. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively 
+--- 1. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively
 --- set the first option to --__DEBUG__ (option with 2 trailing and leading underscores) to dump at runtime.
 ---
 --- ### Returns
@@ -270,20 +270,20 @@ function cli:parse(noprint, dump)
   arg = arg or {}
   local args = {}
   for k,v in pairs(arg) do args[k] = v end  -- copy global args local
-  
+
   -- starts with --help? display the help listing and abort!
   if args[1] and (args[1] == "--help" or args[1] == "-h") then
     return nil, self:print_help(noprint)
   end
 
   -- starts with --__DUMP__; set dump to true to dump the parsed arguments
-  if dump == nil then 
+  if dump == nil then
     if args[1] and args[1] == "--__DUMP__" then
       dump = true
       table.remove(args, 1)  -- delete it to prevent further parsing
     end
   end
-  
+
   while args[1] do
     local entry = nil
     local opt = args[1]
@@ -299,14 +299,14 @@ function cli:parse(noprint, dump)
     if not optpref then
       break   -- no optional prefix, so options are done
     end
-    
+
     if optkey:sub(-1,-1) == "=" then  -- check on a blank value eg. --insert=
       optval = ""
       optkey = optkey:sub(1,-2)
     end
-    
+
     if optkey then
-      entry = 
+      entry =
         self:__lookup(optpref == '-' and optkey or nil,
                       optpref == '--' and optkey or nil)
     end
@@ -341,7 +341,7 @@ function cli:parse(noprint, dump)
         return cli_error("unknown/bad flag; " .. opt, noprint)
       end
     end
-    
+
     entry.value = optval
   end
 
@@ -377,10 +377,10 @@ function cli:parse(noprint, dump)
       self.optargument.value = { self.optargument.default }
     end
   end
-  
+
   -- populate the results table
   local results = {}
-  if self.optargument.maxcount > 0 then 
+  if self.optargument.maxcount > 0 then
     results[self.optargument.key] = self.optargument.value
   end
   for _, entry in pairs(self.required) do
@@ -397,14 +397,14 @@ function cli:parse(noprint, dump)
     for i,v in ipairs(arg) do -- use gloabl 'arg' not the modified local 'args'
       print(string.format("%3i = '%s'", i, v))
     end
-  
+
     print("\n======= Parsed command line ===============")
     if #self.required > 0 then print("\nArguments:") end
     for i,v in ipairs(self.required) do
       print("  " .. v.key .. string.rep(" ", self.maxlabel + 2 - #v.key) .. " => '" .. v.value .. "'")
     end
-    
-    if self.optargument.maxcount > 0 then 
+
+    if self.optargument.maxcount > 0 then
       print("\nOptional arguments:")
       print("  " .. self.optargument.key .. "; allowed are " .. tostring(self.optargument.maxcount) .. " arguments")
       if self.optargument.maxcount == 1 then
@@ -417,10 +417,10 @@ function cli:parse(noprint, dump)
         end
       end
     end
-    
+
     if #self.optional > 0 then print("\nOptional parameters:") end
     local doubles = {}
-    for _, v in pairs(self.optional) do 
+    for _, v in pairs(self.optional) do
       if not doubles[v] then
         local m = v.value
         if type(m) == "string" then
@@ -435,7 +435,7 @@ function cli:parse(noprint, dump)
     print("\n===========================================\n\n")
     return cli_error("commandline dump created as requested per '--__DUMP__' option", noprint)
   end
-  
+
   if not _TEST then
     -- cleanup entire module, as it's single use
     -- remove from package.loaded table to enable the module to
@@ -451,7 +451,7 @@ function cli:parse(noprint, dump)
       cli[k] = nil
     end
   end
-  
+
   return results
 end
 
@@ -502,22 +502,22 @@ function cli:print_help(noprint)
   col1 = col1 + 3     --add margins
   if col2 == 0 then col2 = 72 - col1 end
   if col2 <10 then col2 = 10 end
-  
+
   local append = function(label, desc)
       label = "  " .. label .. string.rep(" ", col1 - (#label + 2))
       desc = wordwrap(desc, col2)   -- word-wrap
       desc = desc:gsub("\n", "\n" .. string.rep(" ", col1)) -- add padding
-      
+
       msg = msg .. label .. desc .. "\n"
   end
-  
+
   if self.required[1] then
     msg = msg .. "\nARGUMENTS: \n"
     for _,entry in ipairs(self.required) do
       append(entry.key, entry.desc .. " (required)")
     end
   end
-  
+
   if self.optargument.maxcount >0 then
     append(self.optargument.key, self.optargument.desc .. " (optional, default: " .. self.optargument.default .. ")")
   end
@@ -527,7 +527,7 @@ function cli:print_help(noprint)
 
     for _,entry in ipairs(self.optional) do
       local desc = entry.desc
-      if not entry.flag and entry.default then
+      if not entry.flag and entry.default and #tostring(entry.default) > 0 then
         desc = desc .. " (default: " .. entry.default .. ")"
       end
       append(entry.label, desc)
