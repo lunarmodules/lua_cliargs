@@ -30,13 +30,8 @@ describe("Testing cliargs library methods/functions", function()
   describe("testing private functions", function()
 
     setup(function()
-      _TEST = true
       package.loaded.cliargs = false  -- Busted uses it, but must force to reload to test it with _TEST
       cli = require("cliargs")
-    end)
-
-    teardown(function()
-      _TEST = nil
     end)
 
     it("tests the private split() function", function()
