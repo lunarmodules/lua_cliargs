@@ -48,14 +48,6 @@ end
 -- start tests
 describe("Testing cliargs library parsing commandlines", function()
 
-  setup(function()
-    _TEST = true
-  end)
-
-  teardown(function()
-    _TEST = false
-  end)
-  
   before_each(function()
     arg = nil
     package.loaded.cliargs = false  -- Busted uses it, but must force to reload 
@@ -250,6 +242,15 @@ describe("Testing cliargs library parsing commandlines", function()
     -- assert.are_not.equal(nil,result)
     assert.is.truthy(result)
     assert.are.equal("", result.compress)
+  end)
+
+  it("tests parsing a flag (expanded-key) with a value provided", function()
+    arg = { "--verbose=something" }
+    defaults = populate_flags(cli)
+    defaults.verbose = true
+    local result, err = cli:parse(true --[[no print]])
+    assert(result == nil, "Adding a value to a flag must error out")
+    assert(type(err) == "string", "Expected an error string")
   end)
 
 end)
