@@ -1,7 +1,7 @@
 package = "lua_cliargs"
 version = "2.1-2"
 source = {
-   url = "https://github.com/downloads/amireh/lua_cliargs/lua_cliargs-2.1.tar.gz"
+   url = "https://github.com/downloads/amireh/lua_cliargs/lua_cliargs-2.1.tar.gz",
    dir = "lua_cliargs-2.1"
 }
 description = {
