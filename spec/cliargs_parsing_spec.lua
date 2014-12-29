@@ -120,6 +120,17 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.are.same(result, defaults)
   end)
   
+  it("tests optional using alternate --expanded-key notation, --x VALUE", function()
+    _G.arg = { "--compress", "lzma" }
+    defaults = populate_optionals(cli)
+    defaults.c = "lzma"
+    defaults.compress = "lzma"
+
+    result = cli:parse()
+
+    assert.are.same(result, defaults)
+  end)
+
   it("tests flag using -short-key notation", function()
     _G.arg = { "-v" }
     defaults = populate_flags(cli)
@@ -177,13 +188,6 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.is.falsy(result)
   end)
   
-  it("tests bad --expanded-key notation, --x VALUE", function()
-    _G.arg = { "--compress", "lzma" }
-    populate_optionals(cli)
-    result = cli:parse(true --[[no print]])
-    assert.is.falsy(result)
-  end)  
-
   it("tests unknown option", function()
     _G.arg = { "--foo=bar" }
     populate_optionals(cli)

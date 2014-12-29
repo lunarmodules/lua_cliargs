@@ -340,7 +340,9 @@ function cli:parse(noprint, dump)
           end
         else
           if not optval then
-            return cli_error("option --" .. optkey .. " requires a value to be set", noprint)
+            -- value is in the next argument
+            optval = args[1]
+            table.remove(args, 1)
           end
         end
       else
