@@ -30,8 +30,13 @@ describe("Testing cliargs library methods/functions", function()
   describe("testing private functions", function()
 
     setup(function()
-      package.loaded.cliargs = false  -- Busted uses it, but must force to reload to test it with _TEST
+      _G._TEST = true
+      package.loaded.cliargs = nil  -- Busted uses it, but must force to reload to test it with _TEST
       cli = require("cliargs")
+    end)
+
+    teardown(function()
+      _G._TEST = nil
     end)
 
     it("tests the private split() function", function()
@@ -91,11 +96,13 @@ describe("Testing cliargs library methods/functions", function()
   describe("testing public functions", function()
 
     setup(function()
-      package.loaded.cliargs = false  -- Busted uses it, but must force to reload to test it with _TEST
+      _G._TEST = true
+      package.loaded.cliargs = nil  -- Busted uses it, but must force to reload to test it with _TEST
       cli = require("cliargs")
     end)
 
     teardown(function()
+      _G._TEST = nil
     end)
     
     before_each(function()
@@ -257,7 +264,7 @@ describe("Testing cliargs library methods/functions", function()
         local key, desc = "ARGUMENT", "thedescription"
         cli:add_opt(key, desc)
         local noprint = true
-        arg = {"arg1", "arg2", "arg3", "arg4"} -- should fail for too many arguments
+        _G.arg = {"arg1", "arg2", "arg3", "arg4"} -- should fail for too many arguments
         local res, err = cli:parse(noprint)
         assert.is.equal(nil, res)
         assert.is.equal(type(err), "string")
