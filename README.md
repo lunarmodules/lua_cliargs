@@ -115,6 +115,7 @@ Many thanks to everyone who reported bugs, provided fixes, and added entirely ne
 1. [Thijs Schreijer](https://github.com/Tieske)
 1. [Jack Lawson](https://github.com/ajacksified)
 1. [Robert Andrew Ditthardt](https://github.com/DorianGray)
+1. [Oscar Lim](https://github.com/o-lim)
 
 *If I missed you, don't hesitate to update this file or just email me.*
 
@@ -123,6 +124,11 @@ Many thanks to everyone who reported bugs, provided fixes, and added entirely ne
 A function reference was generated using [LunaDoc](http://jgm.github.com/lunamark/lunadoc.1.html) which can be found [here](http://lua-cliargs.docs.mxvt.net).
 
 ## Changelog
+
+Changes in 2.2-0 from 2.1-2
+
+1. the `=` that separates keys from values in the `--expanded-key` notation is no longer mandatory; using either a space or a `=` will map the value to the key (e.g., `--compress lzma` is equal to `--compress=lzma`)
+
 Changes in 2.0.0 from 1.x.x
 
 1. added the 'splat' argument, an optional repetitive argument for which a maximum number of occurrences can be set

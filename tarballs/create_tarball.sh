@@ -19,7 +19,7 @@ if [ -f "$FQN.tar.gz" ]; then
 fi
 
 ln -s ../ "$FQN"
-tar --exclude-vcs --exclude=tarballs -hzvcf "$FQN.tar.gz" "$FQN"
+tar --exclude=".git" --exclude=tarballs -hzvcf "$FQN.tar.gz" "$FQN"
 rm "$FQN"
 
 echo -en "Archive created: '$FQN'. "
