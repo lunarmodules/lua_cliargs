@@ -131,6 +131,17 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.are.same(result, defaults)
   end)
 
+  it("tests optional using multiple keys specified", function()
+    _G.arg = { "--key", "value1", "-k", "value2", "--key=value3" }
+    cli:add_option("-k, --key=VALUE", "key that can be specified multiple times", {})
+    defaults = { key = {"value1", "value2", "value3"} }
+    defaults.k = defaults.key
+
+    result = cli:parse()
+
+    assert.are.same(result, defaults)
+  end)
+
   it("tests flag using -short-key notation", function()
     _G.arg = { "-v" }
     defaults = populate_flags(cli)
