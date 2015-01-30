@@ -120,6 +120,14 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.are.same(result, defaults)
   end)
 
+  it("tests option using -short-key value notation", function()
+    _G.arg = { "-out", "outfile" }
+    cli:add_opt("-out VALUE", "output file")
+    defaults = { out = "outfile" }
+    result = cli:parse()
+    assert.are.same(result, defaults)
+  end)
+
   it("tests optional using --expanded-key notation, --x=VALUE", function()
     local args = { "--compress=lzma" }
     defaults = populate_optionals(cli)
