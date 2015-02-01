@@ -261,7 +261,7 @@ end
 --- ### Parameters
 --- 1. **noprint**: set this flag to prevent any information (error or help info) from being printed
 --- 1. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively
---- set the first option to --__DEBUG__ (option with 2 trailing and leading underscores) to dump at runtime.
+--- set the first option to --__DUMP__ (option with 2 trailing and leading underscores) to dump at runtime.
 ---
 --- ### Returns
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values,
