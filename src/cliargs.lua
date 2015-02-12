@@ -312,6 +312,11 @@ function cli:parse(arguments, noprint, dump)
       break   -- no optional prefix, so options are done
     end
 
+    if opt == "--" then
+      table.remove(args, 1)
+      break   -- end of options
+    end
+
     if optkey:sub(-1,-1) == "=" then  -- check on a blank value eg. --insert=
       optval = ""
       optkey = optkey:sub(1,-2)
