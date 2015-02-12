@@ -139,7 +139,7 @@ end
 ---
 --- ### Parameters
 --- 1. **key**: the argument's "name" that will be displayed to the user
---- 1. **desc**: a description of the argument
+--- 2. **desc**: a description of the argument
 ---
 --- ### Usage example
 --- The following will parse the argument (if specified) and set its value in `args["root"]`:
@@ -162,9 +162,9 @@ end
 ---
 --- ### Parameters
 --- 1. **key**: the argument's "name" that will be displayed to the user
---- 1. **desc**: a description of the argument
---- 1. **default**: *optional*; specify a default value (the default is "")
---- 1. **maxcount**: *optional*; specify the maximum number of occurences allowed (default is 1)
+--- 2. **desc**: a description of the argument
+--- 3. **default**: *optional*; specify a default value (the default is "")
+--- 4. **maxcount**: *optional*; specify the maximum number of occurences allowed (default is 1)
 ---
 --- ### Usage example
 --- The following will parse the argument (if specified) and set its value in `args["root"]`:
@@ -192,13 +192,14 @@ end
 --- if the 2nd notation is used then a value can be defined after an `=` (`'-key, --expanded-key=VALUE'`).
 --- As a final option it is possible to only use the expanded key (eg. `'--expanded-key'`) both with and
 --- without a value specified.
---- 1. **desc**: a description for the argument to be shown in --help
---- 1. **default**: *optional*; specify a default value (the default is "")
+--- 2. **desc**: a description for the argument to be shown in --help
+--- 3. **default**: *optional*; specify a default value (the default is "")
+--- 4. **callback**: *optional*; specify a function to call when this option is parsed (the default is nil)
 ---
 --- ### Usage example
 --- The following option will be stored in `args["i"]` and `args["input"]` with a default value of `my_file.txt`:
 --- `cli:add_option("-i, --input=FILE", "path to the input file", "my_file.txt")`
-function cli:add_opt(key, desc, default)
+function cli:add_opt(key, desc, default, callback)
   -- parameterize the key if needed, possible variations:
   -- 1. -key
   -- 2. -key VALUE
@@ -218,6 +219,14 @@ function cli:add_opt(key, desc, default)
       or (type(default) == "table" and next(default) == nil)
     ),
     "Default argument: expected a string, nil, or {}"
+  )
+  assert(
+    (
+      type(callback) == "function"
+      or callback == nil
+      or (getmetatable(callback) or {}).__call
+    ),
+    "Callback argument: expected a function or nil"
   )
 
   local k, ek, v = disect(key)
@@ -244,6 +253,7 @@ function cli:add_opt(key, desc, default)
     label = key,
     flag = (default == false),
     value = default,
+    callback = callback,
   }
 
   table.insert(self.optional, entry)
@@ -256,9 +266,10 @@ end
 ---
 --- ### Parameters
 -- 1. **key**: the argument's key
--- 1. **desc**: a description of the argument to be displayed in the help listing
-function cli:add_flag(key, desc)
-  self:add_opt(key, desc, false)
+-- 2. **desc**: a description of the argument to be displayed in the help listing
+-- 4. **callback**: *optional*; specify a function to call when this flag is parsed (the default is nil)
+function cli:add_flag(key, desc, callback)
+  self:add_opt(key, desc, false, callback)
 end
 
 --- Parses the arguments found in #arg and returns a table with the populated values.
@@ -268,7 +279,7 @@ end
 --- ### Parameters
 --- 1. **arguments**: set this to arg
 --- 1. **noprint**: set this flag to prevent any information (error or help info) from being printed
---- 1. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively
+--- 2. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively
 --- set the first option to --__DUMP__ (option with 2 trailing and leading underscores) to dump at runtime.
 ---
 --- ### Returns
@@ -371,6 +382,17 @@ function cli:parse(arguments, noprint, dump)
       table.insert(entry.value, optval)
     else
       entry.value = optval
+    end
+
+    -- invoke the option's parse-callback, if any
+    if entry.callback then
+      local altkey = entry.key
+
+      if optkey == entry.key then
+        altkey = entry.expanded_key
+      end
+
+      entry.callback(optkey, optval, altkey)
     end
   end
 
