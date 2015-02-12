@@ -202,12 +202,24 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.is.falsy(result)
   end)
 
-  it("tests optionals + required, no optionals and to many required provided, ", function()
+  it("tests optionals + required, no optionals and too many required provided, ", function()
     _G.arg = { "some_file", "some_other_file" }
     populate_required(cli)
     populate_optionals(cli)
     result = cli:parse(true --[[no print]])
     assert.is.falsy(result)
+  end)
+
+  it("tests optionals + required + optarg, '--' as end of optionals", function()
+    _G.arg = { "--verbose", "--", "--input", "-d" }
+    populate_required(cli)
+    populate_optarg(1)
+    local expected = populate_flags(cli)
+    expected.INPUT = "--input"
+    expected.OUTPUT = "-d"
+    expected.verbose = true
+    local result = cli:parse()
+    assert.is.same(expected, result)
   end)
 
   it("tests bad short-key notation, -x=VALUE", function()
