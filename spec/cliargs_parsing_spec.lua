@@ -265,4 +265,50 @@ describe("Testing cliargs library parsing commandlines", function()
     assert(type(err) == "string", "Expected an error string")
   end)
 
+  describe("Tests parsing with callback", function()
+    local cb = {}
+
+    local function callback(key, value, altkey)
+        cb.key, cb.value, cb.altkey = key, value, altkey
+    end
+
+    before_each(function()
+      cb = {}
+    end)
+
+    it("tests short-key option", function()
+      _G.arg = { "-k", "myvalue" }
+      cli:add_option("-k, --long-key=VALUE", "key descriptioin", "", callback)
+      local expected = { k = "myvalue", ["long-key"] = "myvalue" }
+      local result = cli:parse()
+      assert.are.same(expected, result)
+      assert.are.equal(cb.key, "k")
+      assert.are.equal(cb.value, "myvalue")
+      assert.are.equal(cb.altkey, "long-key")
+    end)
+
+    it("tests expanded-key option", function()
+      _G.arg = { "--long-key", "val" }
+      cli:add_option("-k, --long-key=VALUE", "key descriptioin", "", callback)
+      local expected = { k = "val", ["long-key"] = "val" }
+      local result = cli:parse()
+      assert.are.same(expected, result)
+      assert.are.equal(cb.key, "long-key")
+      assert.are.equal(cb.value, "val")
+      assert.are.equal(cb.altkey, "k")
+    end)
+
+    it("tests expanded-key flag with not short-key", function()
+      _G.arg = { "--version" }
+      cli:add_flag("--version", "prints the version and exits", callback)
+      local expected = { version = true }
+      local result = cli:parse()
+      assert.are.same(expected, result)
+      assert.are.equal(cb.key, "version")
+      assert.are.equal(cb.value, true)
+      assert.are.equal(cb.altkey, nil)
+    end)
+
+  end)
+
 end)
