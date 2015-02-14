@@ -36,7 +36,7 @@ local args = cli:parse_args()
 
 if not args then
   -- something wrong happened and an error was printed
-  return
+  os.exit(1)
 end
 
 -- argument parsing was successful, arguments can be found in `args`
