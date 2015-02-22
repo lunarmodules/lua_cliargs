@@ -199,7 +199,6 @@ end
 --- The following option will be stored in `args["i"]` and `args["input"]` with a default value of `my_file.txt`:
 --- `cli:add_option("-i, --input=FILE", "path to the input file", "my_file.txt")`
 function cli:add_opt(key, desc, default)
-
   -- parameterize the key if needed, possible variations:
   -- 1. -key
   -- 2. -key VALUE
@@ -211,7 +210,15 @@ function cli:add_opt(key, desc, default)
   -- 8. --expanded=VALUE
 
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
-  assert(type(default) == "string" or default == nil or default == false or (type(default) == "table" and next(default) == nil), "Default argument: expected a string, nil, or {}")
+  assert(
+    (
+      type(default) == "string"
+      or default == nil
+      or default == false
+      or (type(default) == "table" and next(default) == nil)
+    ),
+    "Default argument: expected a string, nil, or {}"
+  )
 
   local k, ek, v = disect(key)
 
@@ -506,7 +513,6 @@ end
 --- ### Returns
 --- 1. a string with the HELP message.
 function cli:print_help(noprint)
-
   local msg = self:print_usage(true) .. "\n"
   local col1 = self.colsz[1]
   local col2 = self.colsz[2]
@@ -540,7 +546,8 @@ function cli:print_help(noprint)
     for _,entry in ipairs(self.optional) do
       local desc = entry.desc
       if not entry.flag and entry.default and #tostring(entry.default) > 0 then
-        desc = desc .. " (default: " .. entry.default .. ")"
+        readable_default = type(entry.default) == "table" and "[]" or tostring(entry.default)
+        desc = desc .. " (default: " .. readable_default .. ")"
       end
       append(entry.label, desc)
     end

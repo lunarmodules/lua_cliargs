@@ -2,7 +2,7 @@ local cli, defaults, result
 
 -- some helper stuff for debugging
 local quoted = function(s)
-  return "'" .. tostring(s) .. "'" 
+  return "'" .. tostring(s) .. "'"
 end
 local dump = function(t)
   print(" ============= Dump " .. tostring(t) .. " =============")
@@ -33,14 +33,14 @@ local function populate_optarg(cnt)
 end
 local function populate_optionals()
   cli:add_option("-c, --compress=FILTER", "the filter to use for compressing output: gzip, lzma, bzip2, or none", "gzip")
-  cli:add_option("-o FILE", "path to output file", "/dev/stdout")  
+  cli:add_option("-o FILE", "path to output file", "/dev/stdout")
 
   return { c = "gzip", compress = "gzip", o = "/dev/stdout" }
 end
 local function populate_flags()
   cli:add_flag("-d", "script will run in DEBUG mode")
   cli:add_flag("-v, --version", "prints the program's version and exits")
-  cli:add_flag("--verbose", "the script output will be very verbose")  
+  cli:add_flag("--verbose", "the script output will be very verbose")
 
   return { d = false, v = false, version = false, verbose = false }
 end
@@ -58,7 +58,7 @@ describe("Testing cliargs library parsing commandlines", function()
 
   before_each(function()
     _G.arg = nil
-    package.loaded.cliargs = nil  -- Busted uses it, but must force to reload 
+    package.loaded.cliargs = nil  -- Busted uses it, but must force to reload
     cli = require("cliargs")
   end)
 
@@ -66,27 +66,27 @@ describe("Testing cliargs library parsing commandlines", function()
     result = cli:parse()
     assert.are.same(result, {})
   end)
-  
+
   it("tests only optionals, nothing provided", function()
     defaults = populate_optionals(cli)
     result = cli:parse()
     assert.are.same(result, defaults)
   end)
-  
+
   it("tests only required, all provided", function()
     _G.arg = { "some_file" }
     populate_required(cli)
     result = cli:parse()
     assert.are.same(result, { ["INPUT"] = "some_file" })
   end)
-  
+
   it("tests only optionals, all provided", function()
     _G.arg = { "-o", "/dev/cdrom", "--compress=lzma" }
     populate_optionals(cli)
     result = cli:parse()
     assert.are.same(result, { o = "/dev/cdrom", c = "lzma", compress = "lzma" })
   end)
-  
+
   it("tests optionals + required, all provided", function()
     _G.arg = { "-o", "/dev/cdrom", "-c", "lzma", "some_file" }
     populate_required(cli)
@@ -119,7 +119,7 @@ describe("Testing cliargs library parsing commandlines", function()
 
     assert.are.same(result, defaults)
   end)
-  
+
   it("tests optional using alternate --expanded-key notation, --x VALUE", function()
     _G.arg = { "--compress", "lzma" }
     defaults = populate_optionals(cli)
@@ -131,15 +131,33 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.are.same(result, defaults)
   end)
 
-  it("tests optional using multiple keys specified", function()
-    _G.arg = { "--key", "value1", "-k", "value2", "--key=value3" }
-    cli:add_option("-k, --key=VALUE", "key that can be specified multiple times", {})
-    defaults = { key = {"value1", "value2", "value3"} }
-    defaults.k = defaults.key
+  describe("multiple values for a single key", function()
+    it("should work for keys that explicitly permit it", function()
+      _G.arg = { "--key", "value1", "-k", "value2", "--key=value3" }
+      cli:add_option("-k, --key=VALUE", "key that can be specified multiple times", {})
+      defaults = { key = {"value1", "value2", "value3"} }
+      defaults.k = defaults.key
 
-    result = cli:parse()
+      result = cli:parse()
 
-    assert.are.same(result, defaults)
+      assert.are.same(result, defaults)
+    end)
+
+    it("should bail if the default value is not an empty table", function()
+      assert.is.error(function()
+        cli:add_option("-k", "a key that can be specified multiple times", { "foo" })
+      end, "Default argument: expected a")
+    end)
+
+    it("should print [] as the default value in the --help listing", function()
+      cli:add_option("-k, --key=VALUE", "key that can be specified multiple times", {})
+
+      local help_msg = cli:print_help(true)
+
+      assert.is_true(
+        nil ~= help_msg:match("key that can be specified multiple times %(default: %[%]%)")
+      )
+    end)
   end)
 
   it("tests flag using -short-key notation", function()
@@ -159,7 +177,7 @@ describe("Testing cliargs library parsing commandlines", function()
     result = cli:parse()
     assert.are.same(result, defaults)
   end)
-  
+
   it("tests sk-only flag", function()
     _G.arg = { "-d" }
     defaults = populate_flags(cli)
@@ -167,7 +185,7 @@ describe("Testing cliargs library parsing commandlines", function()
     result = cli:parse()
     assert.are.same(result, defaults)
   end)
-    
+
   it("tests ek-only flag", function()
     _G.arg = { "--verbose" }
     defaults = populate_flags(cli)
@@ -175,7 +193,7 @@ describe("Testing cliargs library parsing commandlines", function()
     result = cli:parse()
     assert.are.same(result, defaults)
   end)
-  
+
   it("tests optionals + required, no optionals and to little required provided, ", function()
     _G.arg = { }
     populate_required(cli)
@@ -191,14 +209,14 @@ describe("Testing cliargs library parsing commandlines", function()
     result = cli:parse(true --[[no print]])
     assert.is.falsy(result)
   end)
-  
+
   it("tests bad short-key notation, -x=VALUE", function()
     _G.arg = { "-o=some_file" }
     populate_optionals(cli)
     result = cli:parse(true --[[no print]])
     assert.is.falsy(result)
   end)
-  
+
   it("tests unknown option", function()
     _G.arg = { "--foo=bar" }
     populate_optionals(cli)
