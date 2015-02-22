@@ -121,78 +121,109 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.required[1].desc, desc)
     end)
 
-    it("tests add_opt() with short-key", function()
-      -- takes: key, descr, default
-      local key, desc, default = "-i", "thedescription", "default"
-      cli:add_opt(key, desc, default)
-      assert.are.equal(cli.optional[1].key, "i")
-      --assert.are.equal(cli.optional[1].expanded_key, "")
-      assert.are.equal(cli.optional[1].desc, desc)
-      assert.are.equal(cli.optional[1].flag, true)
-      assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
-    end)
+    describe("#add_opt()", function()
+      describe("given a value indicator", function()
+        it("should work with only a short-key", function()
+          -- takes: key, descr, default
+          local key, desc, default = "-i VALUE", "thedescription", "default"
+          cli:add_opt(key, desc, default)
+          assert.are.equal(cli.optional[1].key, "i")
+          --assert.are.equal(cli.optional[1].expanded_key, "")
+          assert.are.equal(cli.optional[1].desc, desc)
+          assert.are.equal(cli.optional[1].flag, false)
+          assert.are.equal(cli.optional[1].default, default)
+        end)
 
-    it("tests add_opt() with short-key & value", function()
-      -- takes: key, descr, default
-      local key, desc, default = "-i VALUE", "thedescription", "default"
-      cli:add_opt(key, desc, default)
-      assert.are.equal(cli.optional[1].key, "i")
-      --assert.are.equal(cli.optional[1].expanded_key, "")
-      assert.are.equal(cli.optional[1].desc, desc)
-      assert.are.equal(cli.optional[1].flag, false)
-      assert.are.equal(cli.optional[1].default, default)
-    end)
+        it("should work with a short-key that is longer than 1 character", function()
+          local key, desc, default = "-Xassembler OPTIONS", "Pass <arg> on to the assembler", ""
 
-    it("tests add_opt() with short + expanded-key", function()
-      -- takes: key, descr, default
-      local key, desc, default = "-i, --insert", "thedescription", "default"
-      cli:add_opt(key, desc, default)
-      assert.are.equal(cli.optional[1].key, "i")
-      assert.are.equal(cli.optional[1].expanded_key, "insert")
-      assert.are.equal(cli.optional[1].desc, desc)
-      assert.are.equal(cli.optional[1].flag, true)
-      assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
-    end)
+          cli:add_opt(key, desc, default)
 
-    it("tests add_opt() with short + expanded-key & value", function()
-      -- takes: key, descr, default
-      local key, desc, default = "-i, --insert=VALUE", "thedescription", "default"
-      cli:add_opt(key, desc, default)
-      assert.are.equal(cli.optional[1].key, "i")
-      assert.are.equal(cli.optional[1].expanded_key, "insert")
-      assert.are.equal(cli.optional[1].desc, desc)
-      assert.are.equal(cli.optional[1].flag, false)
-      assert.are.equal(cli.optional[1].default, default)
-    end)
+          assert.are.equal(cli.optional[1].key, "Xassembler")
+          assert.are.equal(cli.optional[1].desc, desc)
+          assert.are.equal(cli.optional[1].flag, false)
+          assert.are.equal(cli.optional[1].default, default)
+        end)
 
-    it("tests add_opt() with only expanded-key", function()
-      -- takes: key, descr, default
-      local key, desc, default = "--insert", "thedescription", "default"
-      cli:add_opt(key, desc, default)
-      --assert.are.equal(cli.optional[1].key, "")
-      assert.are.equal(cli.optional[1].expanded_key, "insert")
-      assert.are.equal(cli.optional[1].desc, desc)
-      assert.are.equal(cli.optional[1].flag, true)
-      assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
-    end)
+        it("should work with only expanded-key", function()
+          -- takes: key, descr, default
+          local key, desc, default = "--insert=VALUE", "thedescription", "default"
+          cli:add_opt(key, desc, default)
+          --assert.are.equal(cli.optional[1].key, "")
+          assert.are.equal(cli.optional[1].expanded_key, "insert")
+          assert.are.equal(cli.optional[1].desc, desc)
+          assert.are.equal(cli.optional[1].flag, false)
+          assert.are.equal(cli.optional[1].default, default)
+        end)
 
-    it("tests add_opt() with only expanded-key & value", function()
-      -- takes: key, descr, default
-      local key, desc, default = "--insert=VALUE", "thedescription", "default"
-      cli:add_opt(key, desc, default)
-      --assert.are.equal(cli.optional[1].key, "")
-      assert.are.equal(cli.optional[1].expanded_key, "insert")
-      assert.are.equal(cli.optional[1].desc, desc)
-      assert.are.equal(cli.optional[1].flag, false)
-      assert.are.equal(cli.optional[1].default, default)
-    end)
+        it("should work with combined short + expanded-key", function()
+          -- takes: key, descr, default
+          local key, desc, default = "-i, --insert=VALUE", "thedescription", "default"
+          cli:add_opt(key, desc, default)
+          assert.are.equal(cli.optional[1].key, "i")
+          assert.are.equal(cli.optional[1].expanded_key, "insert")
+          assert.are.equal(cli.optional[1].desc, desc)
+          assert.are.equal(cli.optional[1].flag, false)
+          assert.are.equal(cli.optional[1].default, default)
+        end)
 
-    it("tests add_opt() with short and expanded-key, no comma between them", function()
-      -- takes: key, descr, default
-      local key, desc, default = "-i --insert=VALUE", "thedescription", "default"
-      cli:add_opt(key, desc, default)
-      assert.are.equal(cli.optional[1].key, "i")
-      assert.are.equal(cli.optional[1].expanded_key, "insert")
+        it("should work with combined short + expanded-key, no comma between them", function()
+          -- takes: key, descr, default
+          local key, desc, default = "-i --insert=VALUE", "thedescription", "default"
+          cli:add_opt(key, desc, default)
+          assert.are.equal(cli.optional[1].key, "i")
+          assert.are.equal(cli.optional[1].expanded_key, "insert")
+        end)
+      end)
+
+      describe("given no value indicator (implicit flags)", function()
+        it("should work with a short-key", function()
+          -- takes: key, descr, default
+          local key, desc, default = "-i", "thedescription", "default"
+          cli:add_opt(key, desc, default)
+          assert.are.equal(cli.optional[1].key, "i")
+          --assert.are.equal(cli.optional[1].expanded_key, "")
+          assert.are.equal(cli.optional[1].desc, desc)
+          assert.are.equal(cli.optional[1].flag, true)
+          assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
+        end)
+
+        it("should work with a short-key that is longer than 1 character", function()
+          pending("https://github.com/amireh/lua_cliargs/issues/36")
+
+          -- takes: key, descr, default
+          local key, desc, default = "-Wno-unsigned", "thedescription"
+          cli:add_opt(key, desc, default)
+          dump(cli.optional[1])
+          assert.are.equal(cli.optional[1].key, "Wno-unsigned")
+          --assert.are.equal(cli.optional[1].expanded_key, "")
+          assert.are.equal(cli.optional[1].desc, desc)
+          assert.are.equal(cli.optional[1].flag, true)
+          assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
+        end)
+
+        it("should work with only expanded-key", function()
+          -- takes: key, descr, default
+          local key, desc, default = "--insert", "thedescription", "default"
+          cli:add_opt(key, desc, default)
+          --assert.are.equal(cli.optional[1].key, "")
+          assert.are.equal(cli.optional[1].expanded_key, "insert")
+          assert.are.equal(cli.optional[1].desc, desc)
+          assert.are.equal(cli.optional[1].flag, true)
+          assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
+        end)
+
+        it("should work with combined short + expanded-key", function()
+          -- takes: key, descr, default
+          local key, desc, default = "-i, --insert", "thedescription", "default"
+          cli:add_opt(key, desc, default)
+          assert.are.equal(cli.optional[1].key, "i")
+          assert.are.equal(cli.optional[1].expanded_key, "insert")
+          assert.are.equal(cli.optional[1].desc, desc)
+          assert.are.equal(cli.optional[1].flag, true)
+          assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
+        end)
+      end)
     end)
 
     it("tests add_flag() for setting default value", function()

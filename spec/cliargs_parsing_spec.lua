@@ -38,8 +38,8 @@ local function populate_optionals()
   return { c = "gzip", compress = "gzip", o = "/dev/stdout" }
 end
 local function populate_flags()
-  cli:add_flag("-d", "script will run in DEBUG mode")
   cli:add_flag("-v, --version", "prints the program's version and exits")
+  cli:add_flag("-d", "script will run in DEBUG mode")
   cli:add_flag("--verbose", "the script output will be very verbose")
 
   return { d = false, v = false, version = false, verbose = false }
@@ -47,7 +47,6 @@ end
 
 -- start tests
 describe("Testing cliargs library parsing commandlines", function()
-
   setup(function()
     _G._TEST = true
   end)
@@ -111,12 +110,11 @@ describe("Testing cliargs library parsing commandlines", function()
   end)
 
   it("tests optional using -short-key notation", function()
-    local args = { "-c", "lzma" }
     defaults = populate_optionals(cli)
     defaults.c = "lzma"
     defaults.compress = "lzma"
 
-    result = cli:parse(args)
+    result = cli:parse({ "-c", "lzma" })
     assert.are.same(result, defaults)
   end)
 
@@ -129,35 +127,33 @@ describe("Testing cliargs library parsing commandlines", function()
   end)
 
   it("tests optional using --expanded-key notation, --x=VALUE", function()
-    local args = { "--compress=lzma" }
     defaults = populate_optionals(cli)
     defaults.c = "lzma"
     defaults.compress = "lzma"
 
-    result = cli:parse(args)
+    result = cli:parse({ "--compress=lzma" })
 
     assert.are.same(result, defaults)
   end)
 
   it("tests optional using alternate --expanded-key notation, --x VALUE", function()
-    local args = { "--compress", "lzma" }
     defaults = populate_optionals(cli)
     defaults.c = "lzma"
     defaults.compress = "lzma"
 
-    result = cli:parse(args)
+    result = cli:parse({ "--compress", "lzma" })
 
     assert.are.same(result, defaults)
   end)
 
   describe("multiple values for a single key", function()
     it("should work for keys that explicitly permit it", function()
-      local args = { "--key", "value1", "-k", "value2", "--key=value3" }
       cli:add_option("-k, --key=VALUE", "key that can be specified multiple times", {})
+
       defaults = { key = {"value1", "value2", "value3"} }
       defaults.k = defaults.key
 
-      result = cli:parse(args)
+      result = cli:parse({ "--key", "value1", "-k", "value2", "--key=value3" })
 
       assert.are.same(result, defaults)
     end)
@@ -179,74 +175,83 @@ describe("Testing cliargs library parsing commandlines", function()
     end)
   end)
 
-  it("tests flag using -short-key notation", function()
-    local args = { "-v" }
-    defaults = populate_flags(cli)
-    defaults.v = true
-    defaults.version = true
-    result = cli:parse(args)
-    assert.are.same(result, defaults)
-  end)
+  describe("flag options", function()
+    it("should turn them on using the -short-key notation", function()
+      defaults = populate_flags(cli)
+      defaults.v = true
+      defaults.version = true
+      result = cli:parse({ "-v" })
+      assert.are.same(result, defaults)
+    end)
 
-  it("tests flag using --expanded-key notation", function()
-    local args = { "--version" }
-    defaults = populate_flags(cli)
-    defaults.v = true
-    defaults.version = true
-    result = cli:parse(args)
-    assert.are.same(result, defaults)
-  end)
+    it("should turn them on using the --expanded-key notation", function()
+      defaults = populate_flags(cli)
+      defaults.v = true
+      defaults.version = true
+      result = cli:parse({ "--version" })
+      assert.are.same(result, defaults)
+    end)
 
-  it("tests sk-only flag", function()
-    local args = { "-d" }
-    defaults = populate_flags(cli)
-    defaults.d = true
-    result = cli:parse(args)
-    assert.are.same(result, defaults)
-  end)
+    describe("given a -short-key only flag option", function()
+      it("works", function()
+        cli:add_flag("-d", "script will run in DEBUG mode")
+        result = cli:parse({ "-d" })
+        assert.are.same(result, { d = true })
+      end)
+    end)
 
-  it("tests ek-only flag", function()
-    local args = { "--verbose" }
-    defaults = populate_flags(cli)
-    defaults.verbose = true
-    result = cli:parse(args)
-    assert.are.same(result, defaults)
+    describe("given an --expanded-key only flag option", function()
+      it("works", function()
+        defaults = populate_flags(cli)
+        defaults.verbose = true
+        result = cli:parse({ "--verbose" })
+        assert.are.same(result, defaults)
+      end)
+    end)
+
+    describe("given a value for a flag", function()
+      it("bails", function()
+        local err
+
+        defaults = populate_flags(cli)
+        defaults.verbose = true
+        result, err = cli:parse({ "--verbose=something" }, true --[[no print]])
+
+        assert(result == nil, "Adding a value to a flag must error out")
+        assert(type(err) == "string", "Expected an error string")
+      end)
+    end)
   end)
 
   it("tests optionals + required, no optionals and to little required provided, ", function()
-    local args = { }
     populate_required(cli)
     populate_optionals(cli)
-    result = cli:parse(args, true --[[no print]])
+    result = cli:parse({}, true --[[no print]])
     assert.is.falsy(result)
   end)
 
   it("tests optionals + required, no optionals and to many required provided, ", function()
-    local args = { "some_file", "some_other_file" }
     populate_required(cli)
     populate_optionals(cli)
-    result = cli:parse(args, true --[[no print]])
+    result = cli:parse({ "some_file", "some_other_file" }, true --[[no print]])
     assert.is.falsy(result)
   end)
 
   it("tests bad short-key notation, -x=VALUE", function()
-    local args = { "-o=some_file" }
     populate_optionals(cli)
-    result = cli:parse(args, true --[[no print]])
+    result = cli:parse({ "-o=some_file" }, true --[[no print]])
     assert.is.falsy(result)
   end)
 
   it("tests unknown option", function()
-    local args = { "--foo=bar" }
     populate_optionals(cli)
-    result = cli:parse(args, true --[[no print]])
+    result = cli:parse({ "--foo=bar" }, true --[[no print]])
     assert.is.falsy(result)
   end)
 
   it("tests unknown flag", function()
-    local args = { "--foo" }
     populate_optionals(cli)
-    result = cli:parse(args, true --[[no print]])
+    result = cli:parse({ "--foo" }, true --[[no print]])
     assert.is.falsy(result)
   end)
 
@@ -263,39 +268,34 @@ describe("Testing cliargs library parsing commandlines", function()
   end)
 
   it("tests optarg only, values, multiple allowed", function()
-    local args = {"/output1/", "/output2/"}
     defaults = populate_optarg(3)
-    result = cli:parse(args, true --[[no print]])
+    result = cli:parse({"/output1/", "/output2/"}, true --[[no print]])
     assert.is.same(result, { OUTPUT = {"/output1/", "/output2/"}})
   end)
 
   it("tests optarg only, values, 1 allowed", function()
-    local args = {"/output/"}
     defaults = populate_optarg(1)
-    result = cli:parse(args, true --[[no print]])
+    result = cli:parse({"/output/"}, true --[[no print]])
     assert.is.same(result, { OUTPUT = "/output/" })
   end)
 
   it("tests optarg only, too many values", function()
-    local args = {"/output1/", "/output2/"}
     defaults = populate_optarg(1)
-    result = cli:parse(args, true --[[no print]])
+    result = cli:parse({"/output1/", "/output2/"}, true --[[no print]])
     assert.is.same(result, nil)
   end)
 
   it("tests optarg only, too many values", function()
-    local args = {"/input/", "/output/"}
     populate_required()
     populate_optarg(1)
-    result = cli:parse(args, true --[[no print]])
+    result = cli:parse({"/input/", "/output/"}, true --[[no print]])
     assert.is.same(result, { INPUT = "/input/", OUTPUT = "/output/" })
   end)
 
   it("tests clearing the default of an optional", function()
     local err
-    local args = { "--compress=" }
     populate_optionals(cli)
-    result, err = cli:parse(args, true --[[no print]])
+    result, err = cli:parse({ "--compress=" }, true --[[no print]])
     assert.are.equal(nil,err)
     -- are_not.equal is not working when comparing against a nil as
     -- of luassert-1.2-1, using is.truthy instead for now
@@ -303,14 +303,4 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.is.truthy(result)
     assert.are.equal("", result.compress)
   end)
-
-  it("tests parsing a flag (expanded-key) with a value provided", function()
-    local args = { "--verbose=something" }
-    defaults = populate_flags(cli)
-    defaults.verbose = true
-    local result, err = cli:parse(args, true --[[no print]])
-    assert(result == nil, "Adding a value to a flag must error out")
-    assert(type(err) == "string", "Expected an error string")
-  end)
-
 end)
