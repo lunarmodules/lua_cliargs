@@ -1,7 +1,7 @@
 
 -- some helper stuff for debugging
 local quoted = function(s)
-  return "'" .. tostring(s) .. "'" 
+  return "'" .. tostring(s) .. "'"
 end
 local dump = function(t)
   print(" ============= Dump " .. tostring(t) .. " =============")
@@ -42,7 +42,7 @@ describe("Testing cliargs library methods/functions", function()
     it("tests the private split() function", function()
       -- takes: str, split-char
       local expected, result
-      
+
       result = cli.split("hello,world",",")
       expected = {"hello", "world"}
       assert.is.same(result, expected)
@@ -65,7 +65,7 @@ describe("Testing cliargs library methods/functions", function()
       -- takes: text, size, padding
       local text = "123456789 123456789 123456789!"
       local expected, result
-      
+
       result = cli.wordwrap(text, 10)
       expected = "123456789\n123456789\n123456789!"
       assert.is.same(result, expected)
@@ -92,7 +92,7 @@ describe("Testing cliargs library methods/functions", function()
     end)
 
   end)   -- private functions
-  
+
   describe("testing public functions", function()
 
     setup(function()
@@ -104,7 +104,7 @@ describe("Testing cliargs library methods/functions", function()
     teardown(function()
       _G._TEST = nil
     end)
-    
+
     before_each(function()
       cli.optional = {}
       cli.required = {}
@@ -120,7 +120,7 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.required[1].key, key)
       assert.are.equal(cli.required[1].desc, desc)
     end)
-    
+
     it("tests add_opt() with short-key", function()
       -- takes: key, descr, default
       local key, desc, default = "-i", "thedescription", "default"
@@ -131,7 +131,7 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.optional[1].flag, true)
       assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
     end)
-    
+
     it("tests add_opt() with short-key & value", function()
       -- takes: key, descr, default
       local key, desc, default = "-i VALUE", "thedescription", "default"
@@ -142,7 +142,7 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.optional[1].flag, false)
       assert.are.equal(cli.optional[1].default, default)
     end)
-    
+
     it("tests add_opt() with short + expanded-key", function()
       -- takes: key, descr, default
       local key, desc, default = "-i, --insert", "thedescription", "default"
@@ -153,7 +153,7 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.optional[1].flag, true)
       assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
     end)
-    
+
     it("tests add_opt() with short + expanded-key & value", function()
       -- takes: key, descr, default
       local key, desc, default = "-i, --insert=VALUE", "thedescription", "default"
@@ -164,7 +164,7 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.optional[1].flag, false)
       assert.are.equal(cli.optional[1].default, default)
     end)
-    
+
     it("tests add_opt() with only expanded-key", function()
       -- takes: key, descr, default
       local key, desc, default = "--insert", "thedescription", "default"
@@ -175,7 +175,7 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.optional[1].flag, true)
       assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
     end)
-    
+
     it("tests add_opt() with only expanded-key & value", function()
       -- takes: key, descr, default
       local key, desc, default = "--insert=VALUE", "thedescription", "default"
@@ -186,7 +186,7 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.optional[1].flag, false)
       assert.are.equal(cli.optional[1].default, default)
     end)
-    
+
     it("tests add_opt() with short and expanded-key, no comma between them", function()
       -- takes: key, descr, default
       local key, desc, default = "-i --insert=VALUE", "thedescription", "default"
@@ -194,7 +194,7 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.optional[1].key, "i")
       assert.are.equal(cli.optional[1].expanded_key, "insert")
     end)
-      
+
     it("tests add_flag() for setting default value", function()
       -- takes: key, descr
       local key, desc = "-i, --insert", "thedescription"
@@ -216,7 +216,7 @@ describe("Testing cliargs library methods/functions", function()
       assert.are.equal(cli.required[1].key, key) -- make sure it got added
       assert.is.error(function() cli:add_arg(key, desc) end) -- this should blow up
     end)
-    
+
     it("tests add_opt() with a duplicate argument", function()
       -- takes: key, descr
       local key, desc, default = "-i", "thedescription", "default"
@@ -225,11 +225,11 @@ describe("Testing cliargs library methods/functions", function()
       --assert.are.equal(cli.optional[1].expanded_key, "")
       assert.is.error(function() cli:add_opt(key, desc, default) end) -- this should blow up
     end)
-    
+
     describe("testing the 'noprint' options", function()
 
       local old_print, touched
-    
+
       setup(function()
         old_print = print
         local interceptor = function(...)
@@ -238,7 +238,7 @@ describe("Testing cliargs library methods/functions", function()
         end
         print = interceptor
       end)
-      
+
       teardown(function()
         print = (old_print or print)
       end)
@@ -246,7 +246,7 @@ describe("Testing cliargs library methods/functions", function()
       before_each(function()
         touched = nil
       end)
-      
+
       after_each(function()
       end)
 
@@ -258,21 +258,21 @@ describe("Testing cliargs library methods/functions", function()
         assert.is.equal(type(res), "string")
         assert.is.equal(nil, touched)
       end)
-      
+
       it("tests whether a parsing error through cli_error() does not print anything, if noprint is set", function()
         -- generate a parse error
         local key, desc = "ARGUMENT", "thedescription"
         cli:add_opt(key, desc)
         local noprint = true
-        _G.arg = {"arg1", "arg2", "arg3", "arg4"} -- should fail for too many arguments
-        local res, err = cli:parse(noprint)
+        local args = {"arg1", "arg2", "arg3", "arg4"} -- should fail for too many arguments
+        local res, err = cli:parse(args, noprint)
         assert.is.equal(nil, res)
         assert.is.equal(type(err), "string")
         assert.is.equal(nil, touched)
       end)
-      
+
     end)
 
   end)   -- public functions
-  
+
 end)

@@ -266,6 +266,7 @@ end
 --- *Aliases: `parse_args`*
 ---
 --- ### Parameters
+--- 1. **arguments**: set this to arg
 --- 1. **noprint**: set this flag to prevent any information (error or help info) from being printed
 --- 1. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively
 --- set the first option to --__DUMP__ (option with 2 trailing and leading underscores) to dump at runtime.
@@ -273,10 +274,14 @@ end
 --- ### Returns
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values,
 --- or nil + error message (--help option is considered an error and returns nil + help message)
-function cli:parse(noprint, dump)
-  arg = arg or {}
+function cli:parse(arguments, noprint, dump)
+  if type(arguments) ~= "table" then
+    -- optional 'arguments' was not provided, so shift remaining arguments
+    noprint, dump, arguments = arguments, noprint, nil
+  end
+  local arguments = arguments or arg or {}
   local args = {}
-  for k,v in pairs(arg) do args[k] = v end  -- copy global args local
+  for k,v in pairs(arguments) do args[k] = v end  -- copy args local
 
   -- starts with --help? display the help listing and abort!
   if args[1] and (args[1] == "--help" or args[1] == "-h") then

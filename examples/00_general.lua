@@ -32,7 +32,7 @@ cli:set_name("cli_example.lua")
   cli:add_flag("--verbose", "the script output will be very verbose")
 
 -- Parses from _G['arg']
-local args = cli:parse_args()
+local args = cli:parse(arg)
 
 if not args then
   -- something wrong happened and an error was printed
