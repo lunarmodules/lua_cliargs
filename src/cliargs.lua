@@ -77,11 +77,11 @@ local function disect(key)
   local k, ek, v
   local dummy
   -- if there is no comma, between short and extended, add one
-  _, _, dummy = key:find("^%-([%a%d])[%s]%-%-")
+  _, _, dummy = key:find("^%-([%a%d]+)[%s]%-%-")
   if dummy then key = key:gsub("^%-[%a%d][%s]%-%-", "-"..dummy..", --", 1) end
   -- for a short key + value, replace space by "="
-  _, _, dummy = key:find("^%-([%a%d])[%s]")
-  if dummy then key = key:gsub("^%-([%a%d])[ ]", "-"..dummy.."=", 1) end
+  _, _, dummy = key:find("^%-([%a%d]+)[%s]")
+  if dummy then key = key:gsub("^%-([%a%d]+)[ ]", "-"..dummy.."=", 1) end
   -- if there is no "=", then append one
   if not key:find("=") then key = key .. "=" end
   -- get value
