@@ -36,7 +36,7 @@ local args = cli:parse_args()
 
 if not args then
   -- something wrong happened and an error was printed
-  return
+  os.exit(1)
 end
 
 -- argument parsing was successful, arguments can be found in `args`
@@ -45,7 +45,8 @@ end
 
 -- checking for flags: is -v or --version set?
 if args["v"] then
-  return print("cli_example.lua: version 1.2.1")
+  print("cli_example.lua: version 1.2.1")
+  os.exit(0)
 end
 
 print("Input file: " .. args["INPUT"])
