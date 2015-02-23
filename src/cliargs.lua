@@ -232,7 +232,7 @@ function cli:add_opt(key, desc, default, callback)
   local k, ek, v = disect(key)
 
   if default == false and v ~= nil then
-    error("A flag type option cannot have a value set; " .. key)
+    error("A flag type option cannot have a value set: " .. key)
   end
 
   -- guard against duplicates
@@ -278,8 +278,8 @@ end
 ---
 --- ### Parameters
 --- 1. **arguments**: set this to arg
---- 1. **noprint**: set this flag to prevent any information (error or help info) from being printed
---- 2. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively
+--- 2. **noprint**: set this flag to prevent any information (error or help info) from being printed
+--- 3. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively
 --- set the first option to --__DUMP__ (option with 2 trailing and leading underscores) to dump at runtime.
 ---
 --- ### Returns
@@ -341,13 +341,13 @@ function cli:parse(arguments, noprint, dump)
 
     if not optkey or not entry then
       local option_type = optval and "option" or "flag"
-      return cli_error("unknown/bad " .. option_type .. "; " .. opt, noprint)
+      return cli_error("unknown/bad " .. option_type .. ": " .. opt, noprint)
     end
 
     table.remove(args,1)
     if optpref == "-" then
       if optval then
-        return cli_error("short option does not allow value through '='; "..opt, noprint)
+        return cli_error("short option does not allow value through '=': "..opt, noprint)
       end
       if entry.flag then
         optval = true
@@ -374,7 +374,7 @@ function cli:parse(arguments, noprint, dump)
           end
         end
       else
-        return cli_error("unknown/bad flag; " .. opt, noprint)
+        return cli_error("unknown/bad flag: " .. opt, noprint)
       end
     end
 
@@ -392,16 +392,19 @@ function cli:parse(arguments, noprint, dump)
         altkey = entry.expanded_key
       end
 
-      entry.callback(optkey, optval, altkey)
+      local status, err = entry.callback(optkey, optval, altkey, opt)
+      if status == nil and err then
+        return cli_error(err, noprint)
+      end
     end
   end
 
   -- missing any required arguments, or too many?
   if #args < #self.required or #args > #self.required + self.optargument.maxcount then
     if self.optargument.maxcount > 0 then
-      return cli_error("bad number of arguments; " .. #self.required .."-" .. #self.required + self.optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
+      return cli_error("bad number of arguments: " .. #self.required .."-" .. #self.required + self.optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
     else
-      return cli_error("bad number of arguments; " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
+      return cli_error("bad number of arguments: " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
     end
   end
 

@@ -318,8 +318,12 @@ describe("Testing cliargs library parsing commandlines", function()
   describe("Tests parsing with callback", function()
     local cb = {}
 
-    local function callback(key, value, altkey)
-        cb.key, cb.value, cb.altkey = key, value, altkey
+    local function callback(key, value, altkey, opt)
+      cb.key, cb.value, cb.altkey = key, value, altkey
+      return true
+    end
+    local function callback_fail(key, value, altkey, opt)
+      return nil, "bad argument to " .. opt
     end
 
     before_each(function()
@@ -327,10 +331,9 @@ describe("Testing cliargs library parsing commandlines", function()
     end)
 
     it("tests short-key option", function()
-      _G.arg = { "-k", "myvalue" }
       cli:add_option("-k, --long-key=VALUE", "key descriptioin", "", callback)
       local expected = { k = "myvalue", ["long-key"] = "myvalue" }
-      local result = cli:parse()
+      local result = cli:parse({ "-k", "myvalue" })
       assert.are.same(expected, result)
       assert.are.equal(cb.key, "k")
       assert.are.equal(cb.value, "myvalue")
@@ -338,10 +341,9 @@ describe("Testing cliargs library parsing commandlines", function()
     end)
 
     it("tests expanded-key option", function()
-      _G.arg = { "--long-key", "val" }
       cli:add_option("-k, --long-key=VALUE", "key descriptioin", "", callback)
       local expected = { k = "val", ["long-key"] = "val" }
-      local result = cli:parse()
+      local result = cli:parse({ "--long-key", "val" })
       assert.are.same(expected, result)
       assert.are.equal(cb.key, "long-key")
       assert.are.equal(cb.value, "val")
@@ -349,14 +351,22 @@ describe("Testing cliargs library parsing commandlines", function()
     end)
 
     it("tests expanded-key flag with not short-key", function()
-      _G.arg = { "--version" }
       cli:add_flag("--version", "prints the version and exits", callback)
       local expected = { version = true }
-      local result = cli:parse()
+      local result = cli:parse({ "--version" })
       assert.are.same(expected, result)
       assert.are.equal(cb.key, "version")
       assert.are.equal(cb.value, true)
       assert.are.equal(cb.altkey, nil)
+    end)
+
+    it("tests callback returning error", function()
+      cli:set_name('myapp')
+      cli:add_option("-k, --long-key=VALUE", "key descriptioin", "", callback_fail)
+      local result, err = cli:parse({ "--long-key", "val" }, true --[[no print]])
+      assert(result == nil, "Failure in callback returns nil")
+      assert(type(err) == "string", "Expected an error string")
+      assert.are.equal(err, "myapp: error: bad argument to --long-key; re-run with --help for usage.")
     end)
   end)
 end)
