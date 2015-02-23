@@ -126,6 +126,14 @@ A function reference was generated using [LunaDoc](http://jgm.github.com/lunamar
 
 ## Changelog
 
+Changes in 2.3.0
+
+1. the parser will now understand `--` to denote the end of optional arguments and will map whatever comes after it to required/splat args
+2. `-short VALUE` is now properly supported, so is `-short=VALUE`
+3. short-key options can now officially be composed of more than 1 character
+4. the parser now accepts callbacks that will be invoked as soon as options are parsed so that you can bail out of parsing preemptively (like for `--version` or `--help` options)
+5. options can now accept multiple values via multiple invocations if a table was provided as a default value (passed-in values will be appended to that list)
+
 Changes in 2.2-0 from 2.1-2
 
 1. the `=` that separates keys from values in the `--expanded-key` notation is no longer mandatory; using either a space or a `=` will map the value to the key (e.g., `--compress lzma` is equal to `--compress=lzma`)
