@@ -128,7 +128,6 @@ describe("Testing cliargs library methods/functions", function()
           local key, desc, default = "-i VALUE", "thedescription", "default"
           cli:add_opt(key, desc, default)
           assert.are.equal(cli.optional[1].key, "i")
-          --assert.are.equal(cli.optional[1].expanded_key, "")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, false)
           assert.are.equal(cli.optional[1].default, default)
@@ -149,7 +148,6 @@ describe("Testing cliargs library methods/functions", function()
           -- takes: key, descr, default
           local key, desc, default = "--insert=VALUE", "thedescription", "default"
           cli:add_opt(key, desc, default)
-          --assert.are.equal(cli.optional[1].key, "")
           assert.are.equal(cli.optional[1].expanded_key, "insert")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, false)
@@ -182,21 +180,17 @@ describe("Testing cliargs library methods/functions", function()
           local key, desc, default = "-i", "thedescription", "default"
           cli:add_opt(key, desc, default)
           assert.are.equal(cli.optional[1].key, "i")
-          --assert.are.equal(cli.optional[1].expanded_key, "")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, true)
           assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
         end)
 
         it("should work with a short-key that is longer than 1 character", function()
-          pending("https://github.com/amireh/lua_cliargs/issues/36")
-
           -- takes: key, descr, default
           local key, desc, default = "-Wno-unsigned", "thedescription"
           cli:add_opt(key, desc, default)
           dump(cli.optional[1])
           assert.are.equal(cli.optional[1].key, "Wno-unsigned")
-          --assert.are.equal(cli.optional[1].expanded_key, "")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, true)
           assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
@@ -206,7 +200,6 @@ describe("Testing cliargs library methods/functions", function()
           -- takes: key, descr, default
           local key, desc, default = "--insert", "thedescription", "default"
           cli:add_opt(key, desc, default)
-          --assert.are.equal(cli.optional[1].key, "")
           assert.are.equal(cli.optional[1].expanded_key, "insert")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, true)
@@ -253,7 +246,6 @@ describe("Testing cliargs library methods/functions", function()
       local key, desc, default = "-i", "thedescription", "default"
       cli:add_opt(key, desc, default)
       assert.are.equal(cli.optional[1].key, "i") -- make sure it got added
-      --assert.are.equal(cli.optional[1].expanded_key, "")
       assert.is.error(function() cli:add_opt(key, desc, default) end) -- this should blow up
     end)
 
