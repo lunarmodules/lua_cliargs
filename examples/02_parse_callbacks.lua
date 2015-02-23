@@ -12,7 +12,7 @@ Try this file with the following commands lines;
 
 local cli = require "cliargs"
 
-local function print_version(key, value, altkey)
+local function print_version(key, value, altkey, opt)
   -- this is called when the flag -v or --version is set
   if key == 'version' then
     print("example.lua: version 1.2.1")
