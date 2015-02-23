@@ -89,7 +89,7 @@ local function disect(key)
   -- get key(s), remove spaces
   key = split(key, "=")[1]:gsub(" ", "")
   -- get short key & extended key
-  _, _, k = key:find("^%-([%a%d]+)")
+  _, _, k = key:find("^%-([^-][^%s,]*)")
   _, _, ek = key:find("%-%-(.+)$")
   if v == "" then v = nil end
   return k,ek,v
