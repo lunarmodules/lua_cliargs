@@ -189,7 +189,7 @@ describe("Testing cliargs library methods/functions", function()
           -- takes: key, descr, default
           local key, desc, default = "-Wno-unsigned", "thedescription"
           cli:add_opt(key, desc, default)
-          dump(cli.optional[1])
+
           assert.are.equal(cli.optional[1].key, "Wno-unsigned")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, true)
