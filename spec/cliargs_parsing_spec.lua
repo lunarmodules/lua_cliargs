@@ -315,13 +315,14 @@ describe("Testing cliargs library parsing commandlines", function()
     assert.are.equal("", result.compress)
   end)
 
-  describe("Tests parsing with callback", function()
+  describe("Tests options parsing with callback", function()
     local cb = {}
 
     local function callback(key, value, altkey, opt)
       cb.key, cb.value, cb.altkey = key, value, altkey
       return true
     end
+
     local function callback_fail(key, value, altkey, opt)
       return nil, "bad argument to " .. opt
     end
@@ -331,23 +332,23 @@ describe("Testing cliargs library parsing commandlines", function()
     end)
 
     it("tests short-key option", function()
-      cli:add_option("-k, --long-key=VALUE", "key descriptioin", "", callback)
+      cli:add_option("-k, --long-key=VALUE", "key description", "", callback)
       local expected = { k = "myvalue", ["long-key"] = "myvalue" }
       local result = cli:parse({ "-k", "myvalue" })
       assert.are.same(expected, result)
-      assert.are.equal(cb.key, "k")
-      assert.are.equal(cb.value, "myvalue")
-      assert.are.equal(cb.altkey, "long-key")
+      assert.are.equal("k", cb.key)
+      assert.are.equal("myvalue", cb.value)
+      assert.are.equal("long-key", cb.altkey)
     end)
 
     it("tests expanded-key option", function()
-      cli:add_option("-k, --long-key=VALUE", "key descriptioin", "", callback)
+      cli:add_option("-k, --long-key=VALUE", "key description", "", callback)
       local expected = { k = "val", ["long-key"] = "val" }
       local result = cli:parse({ "--long-key", "val" })
       assert.are.same(expected, result)
-      assert.are.equal(cb.key, "long-key")
-      assert.are.equal(cb.value, "val")
-      assert.are.equal(cb.altkey, "k")
+      assert.are.equal("long-key", cb.key)
+      assert.are.equal("val", cb.value)
+      assert.are.equal("k", cb.altkey)
     end)
 
     it("tests expanded-key flag with not short-key", function()
@@ -355,18 +356,100 @@ describe("Testing cliargs library parsing commandlines", function()
       local expected = { version = true }
       local result = cli:parse({ "--version" })
       assert.are.same(expected, result)
-      assert.are.equal(cb.key, "version")
-      assert.are.equal(cb.value, true)
-      assert.are.equal(cb.altkey, nil)
+      assert.are.equal("version", cb.key)
+      assert.are.equal(true, cb.value)
+      assert.are.equal(nil, cb.altkey)
     end)
 
     it("tests callback returning error", function()
       cli:set_name('myapp')
-      cli:add_option("-k, --long-key=VALUE", "key descriptioin", "", callback_fail)
+      cli:add_option("-k, --long-key=VALUE", "key description", "", callback_fail)
       local result, err = cli:parse({ "--long-key", "val" }, true --[[no print]])
       assert(result == nil, "Failure in callback returns nil")
       assert(type(err) == "string", "Expected an error string")
       assert.are.equal(err, "myapp: error: bad argument to --long-key; re-run with --help for usage.")
+    end)
+  end)
+
+  describe("Tests argument parsing with callback", function()
+    local cb = {}
+
+    local function callback(key, value)
+      cb.key, cb.value = key, value
+      return true
+    end
+
+    local function callback_arg(key, value)
+      table.insert(cb, { key = key, value = value })
+      return true
+    end
+
+    local function callback_fail(key, value)
+      return nil, "bad argument for " .. key
+    end
+
+    before_each(function()
+      cb = {}
+    end)
+
+    it("tests one required argument", function()
+      cli:add_arg("ARG", "arg description", callback)
+      local expected = { ARG = "arg_val" }
+      local result = cli:parse({ "arg_val" })
+      assert.are.same(expected, result)
+      assert.are.equal("ARG", cb.key)
+      assert.are.equal("arg_val", cb.value)
+    end)
+
+    it("tests required argument callback returning error", function()
+      cli:set_name('myapp')
+      cli:add_arg("ARG", "arg description", callback_fail)
+      local expected = { ARG = "arg_val" }
+      local result, err = cli:parse({ "arg_val" }, true --[[no print]])
+      assert(result == nil, "Failure in callback returns nil")
+      assert(type(err) == "string", "Expected an error string")
+      assert.are.equal(err, "myapp: error: bad argument for ARG; re-run with --help for usage.")
+    end)
+
+    it("tests many required arguments", function()
+      cli:add_arg("ARG1", "arg1 description", callback_arg)
+      cli:add_arg("ARG2", "arg2 description", callback_arg)
+      cli:add_arg("ARG3", "arg3 description", callback_arg)
+      local expected = { ARG1 = "arg1_val", ARG2 = "arg2_val", ARG3 = "arg3_val" }
+      local result = cli:parse({ "arg1_val", "arg2_val", "arg3_val" })
+      assert.are.same(expected, result)
+      assert.are.same({ key = "ARG1", value = "arg1_val"}, cb[1])
+      assert.are.same({ key = "ARG2", value = "arg2_val"}, cb[2])
+      assert.are.same({ key = "ARG3", value = "arg3_val"}, cb[3])
+    end)
+
+    it("tests one optional argument", function()
+      cli:optarg("OPTARG", "optional arg description", nil, 1, callback)
+      local expected = { OPTARG = "opt_arg" }
+      local result = cli:parse({ "opt_arg" })
+      assert.are.same(expected, result)
+      assert.are.equal("OPTARG", cb.key)
+      assert.are.equal("opt_arg", cb.value)
+    end)
+
+    it("tests optional argument callback returning error", function()
+      cli:set_name('myapp')
+      cli:optarg("OPTARG", "optinoal arg description", nil, 1, callback_fail)
+      local expected = { ARG = "arg_val" }
+      local result, err = cli:parse({ "opt_arg" }, true --[[no print]])
+      assert(result == nil, "Failure in callback returns nil")
+      assert(type(err) == "string", "Expected an error string")
+      assert.are.equal(err, "myapp: error: bad argument for OPTARG; re-run with --help for usage.")
+    end)
+
+    it("tests many optional arguments", function()
+      cli:optarg("OPTARG", "optional arg description", nil, 3, callback_arg)
+      local expected = { OPTARG = { "opt_arg1", "opt_arg2", "opt_arg3" } }
+      local result = cli:parse({ "opt_arg1", "opt_arg2", "opt_arg3" })
+      assert.are.same(expected, result)
+      assert.are.same({ key = "OPTARG", value = "opt_arg1"}, cb[1])
+      assert.are.same({ key = "OPTARG", value = "opt_arg2"}, cb[2])
+      assert.are.same({ key = "OPTARG", value = "opt_arg3"}, cb[3])
     end)
   end)
 end)
