@@ -42,7 +42,7 @@ local function populate_flags()
   cli:add_flag("-d", "script will run in DEBUG mode")
   cli:add_flag("--verbose", "the script output will be very verbose")
 
-  return { d = false, v = false, version = false, verbose = false }
+  return { d = nil, v = nil, version = nil, verbose = nil }
 end
 
 -- start tests

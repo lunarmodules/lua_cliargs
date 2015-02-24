@@ -193,7 +193,7 @@ end
 --- As a final option it is possible to only use the expanded key (eg. `'--expanded-key'`) both with and
 --- without a value specified.
 --- 2. **desc**: a description for the argument to be shown in --help
---- 3. **default**: *optional*; specify a default value (the default is "")
+--- 3. **default**: *optional*; specify a default value (the default is nil)
 --- 4. **callback**: *optional*; specify a function to call when this option is parsed (the default is nil)
 ---
 --- ### Usage example
@@ -241,8 +241,7 @@ function cli:add_opt(key, desc, default, callback)
   end
 
   -- set defaults
-  if v == nil then default = false end   -- no value, so its a flag
-  if default == nil then default = "" end
+  if v == nil then default = nil end   -- no value, set it's a flag, so set default to nil
 
   -- below description of full entry record, nils included for reference
   local entry = {
@@ -251,7 +250,7 @@ function cli:add_opt(key, desc, default, callback)
     desc = desc,
     default = default,
     label = key,
-    flag = (default == false),
+    flag = (v == nil), -- no value, so it's a flag
     value = default,
     callback = callback,
   }
