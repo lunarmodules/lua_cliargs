@@ -163,7 +163,7 @@ end
 --- ### Parameters
 --- 1. **key**: the argument's "name" that will be displayed to the user
 --- 2. **desc**: a description of the argument
---- 3. **default**: *optional*; specify a default value (the default is "")
+--- 3. **default**: *optional*; specify a default value (the default is nil)
 --- 4. **maxcount**: *optional*; specify the maximum number of occurences allowed (default is 1)
 ---
 --- ### Usage example
@@ -172,8 +172,7 @@ end
 --- The value returned will be a table with at least 1 entry and a maximum of 2 entries
 function cli:optarg(key, desc, default, maxcount)
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
-  default = default or ""
-  assert(type(default) == "string", "Default value must either be omitted or be a string")
+  assert(type(default) == "string" or default == nil, "Default value must either be omitted or be a string")
   maxcount = maxcount or 1
   maxcount = tonumber(maxcount)
   assert(maxcount and maxcount>0 and maxcount<1000,"Maxcount must be a number from 1 to 999")
