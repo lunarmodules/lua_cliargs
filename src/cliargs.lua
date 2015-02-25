@@ -517,12 +517,15 @@ end
 function cli:print_usage(noprint)
   -- print the USAGE heading
   local msg = "Usage: " .. tostring(self.name)
-  if self.optional[1] then
-    msg = msg .. " [OPTIONS] "
+  if #self.optional > 0 then
+    msg = msg .. " [OPTIONS]"
   end
-  if self.required[1] then
+  if #self.required > 0 or self.optargument.maxcount > 0 then
+    msg = msg .. " [--]"
+  end
+  if #self.required > 0 then
     for _,entry in ipairs(self.required) do
-      msg = msg .. " " .. entry.key .. " "
+      msg = msg .. " " .. entry.key
     end
   end
   if self.optargument.maxcount == 1 then
@@ -569,11 +572,11 @@ function cli:print_help(noprint)
     end
   end
 
-  if self.optargument.maxcount >0 then
+  if self.optargument.maxcount > 0 then
     append(self.optargument.key, self.optargument.desc .. " (optional, default: " .. self.optargument.default .. ")")
   end
 
-  if self.optional[1] then
+  if #self.optional > 0 then
     msg = msg .. "\nOPTIONS: \n"
 
     for _,entry in ipairs(self.optional) do
