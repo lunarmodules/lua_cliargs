@@ -13,6 +13,9 @@ function abort {
 [ -z "${GITHUB_REPO}"   ] && abort "Missing GITHUB_REPO env variable."
 
 VERSION=$(grep "version" lua_cliargs-*.rockspec | cut -d' ' -f3 | sed 's/"//g')
+SRC_VERSION=$(grep "_VERSION" src/cliargs.lua | sed -e 's/.*=//' -e 's/.* //' -e 's/"//g')
+
+[ "${VERSION}" != "${SRC_VERSION}" ] && abort "Verion in rockspec does not match source"
 
 # Publish to GitHub
 JSON_PAYLOAD=$(
