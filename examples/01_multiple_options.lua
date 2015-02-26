@@ -13,7 +13,7 @@ Try this file with the following invocations;
     combined.html
 --]]
 
-local cli = require "../src/cliargs"
+local cli = require "cliargs"
 
 cli:set_name("example.lua")
 

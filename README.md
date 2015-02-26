@@ -126,6 +126,12 @@ A function reference was generated using [LunaDoc](http://jgm.github.com/lunamar
 
 ## Changelog
 
+Changes in 2.4.0 from 2.3-4
+
+1. All arguments now accept a callback that will be invoked when parsing of those arguments was successful
+2. (**POSSIBLY BREAKING**) Default value for flags is now `nil` instead of `false`. This will only affect existing behavior if you were explicitly testing unset flags to equal `false` (i.e. `if flag == false then`) as opposed to `if flag then` (or `if not flag then`).
+3. Minor bugfixes
+
 Changes in 2.3.0
 
 1. the parser will now understand `--` to denote the end of optional arguments and will map whatever comes after it to required/splat args

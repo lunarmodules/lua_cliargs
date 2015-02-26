@@ -1,3 +1,4 @@
 /luacov.report.out
 /luacov.stats.out
 /.env.local
+/*.rock
