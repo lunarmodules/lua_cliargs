@@ -163,7 +163,7 @@ end
 --- ### Parameters
 --- 1. **key**: the argument's "name" that will be displayed to the user
 --- 2. **desc**: a description of the argument
---- 3. **default**: *optional*; specify a default value (the default is "")
+--- 3. **default**: *optional*; specify a default value (the default is nil)
 --- 4. **maxcount**: *optional*; specify the maximum number of occurences allowed (default is 1)
 ---
 --- ### Usage example
@@ -172,8 +172,7 @@ end
 --- The value returned will be a table with at least 1 entry and a maximum of 2 entries
 function cli:optarg(key, desc, default, maxcount)
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
-  default = default or ""
-  assert(type(default) == "string", "Default value must either be omitted or be a string")
+  assert(type(default) == "string" or default == nil, "Default value must either be omitted or be a string")
   maxcount = maxcount or 1
   maxcount = tonumber(maxcount)
   assert(maxcount and maxcount>0 and maxcount<1000,"Maxcount must be a number from 1 to 999")
@@ -193,7 +192,7 @@ end
 --- As a final option it is possible to only use the expanded key (eg. `'--expanded-key'`) both with and
 --- without a value specified.
 --- 2. **desc**: a description for the argument to be shown in --help
---- 3. **default**: *optional*; specify a default value (the default is "")
+--- 3. **default**: *optional*; specify a default value (the default is nil)
 --- 4. **callback**: *optional*; specify a function to call when this option is parsed (the default is nil)
 ---
 --- ### Usage example
@@ -241,8 +240,7 @@ function cli:add_opt(key, desc, default, callback)
   end
 
   -- set defaults
-  if v == nil then default = false end   -- no value, so its a flag
-  if default == nil then default = "" end
+  if v == nil then default = nil end   -- no value, set it's a flag, so set default to nil
 
   -- below description of full entry record, nils included for reference
   local entry = {
@@ -251,7 +249,7 @@ function cli:add_opt(key, desc, default, callback)
     desc = desc,
     default = default,
     label = key,
-    flag = (default == false),
+    flag = (v == nil), -- no value, so it's a flag
     value = default,
     callback = callback,
   }

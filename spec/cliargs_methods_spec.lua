@@ -182,7 +182,7 @@ describe("Testing cliargs library methods/functions", function()
           assert.are.equal(cli.optional[1].key, "i")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, true)
-          assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
+          assert.are.equal(cli.optional[1].default, nil) -- no value = flag type option, hence nil
         end)
 
         it("should work with a short-key that is longer than 1 character", function()
@@ -193,7 +193,7 @@ describe("Testing cliargs library methods/functions", function()
           assert.are.equal(cli.optional[1].key, "Wno-unsigned")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, true)
-          assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
+          assert.are.equal(cli.optional[1].default, nil) -- no value = flag type option, hence nil
         end)
 
         it("should work with only expanded-key", function()
@@ -203,7 +203,7 @@ describe("Testing cliargs library methods/functions", function()
           assert.are.equal(cli.optional[1].expanded_key, "insert")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, true)
-          assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
+          assert.are.equal(cli.optional[1].default, nil) -- no value = flag type option, hence nil
         end)
 
         it("should work with combined short + expanded-key", function()
@@ -214,7 +214,7 @@ describe("Testing cliargs library methods/functions", function()
           assert.are.equal(cli.optional[1].expanded_key, "insert")
           assert.are.equal(cli.optional[1].desc, desc)
           assert.are.equal(cli.optional[1].flag, true)
-          assert.are.equal(cli.optional[1].default, false) -- no value = flag type option, hence false
+          assert.are.equal(cli.optional[1].default, nil) -- no value = flag type option, hence nil
         end)
       end)
     end)
@@ -224,7 +224,7 @@ describe("Testing cliargs library methods/functions", function()
       local key, desc = "-i, --insert", "thedescription"
       cli:add_flag(key, desc)
       assert.are.equal(cli.optional[1].flag, true)
-      assert.are.equal(cli.optional[1].default, false)  -- boolean because its a flag
+      assert.are.equal(cli.optional[1].default, nil)
     end)
 
     it("tests add_flag() to error-out when providing a value", function()
