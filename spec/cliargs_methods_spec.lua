@@ -241,6 +241,24 @@ describe("Testing cliargs library methods/functions", function()
       assert.is.error(function() cli:add_arg(key, desc) end) -- this should blow up
     end)
 
+    it("tests add_flag() with a duplicate argument", function()
+      -- takes: key, descr
+      local key, desc, default = "--no-insert", "thedescription", nil
+      cli:add_flag(key, desc, default)
+      assert.are.equal(cli.optional[1].expanded_key, "no-insert") -- make sure it got added
+      assert.is.error(function() cli:add_flag("--[no-]insert", desc) end) -- this should blow up
+    end)
+
+    it("tests add_opt() with a duplicate flag", function()
+      -- takes: key, descr
+      local key, desc, default = "-i, --[no-]insert", "thedescription", true
+      cli:add_flag(key, desc, default)
+      assert.are.equal(cli.optional[1].key, "i") -- make sure it got added
+      assert.are.equal(cli.optional[1].expanded_key, "insert") -- make sure it got added
+      assert.is.error(function() cli:add_opt("--no-insert", desc, '') end) -- this should blow up
+      assert.is.error(function() cli:add_opt("--insert", desc, '') end) -- this should blow up
+    end)
+
     it("tests add_opt() with a duplicate argument", function()
       -- takes: key, descr
       local key, desc, default = "-i", "thedescription", "default"
