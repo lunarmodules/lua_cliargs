@@ -26,27 +26,25 @@ end
 local buildline = function(words, size, overflow)
   -- if overflow is set, a word longer than size, will overflow the size
   -- otherwise it will be chopped in line-length pieces
-  local line = ""
+  local line = {}
   if string.len(words[1]) > size then
     -- word longer than line
     if overflow then
-      line = words[1]
+      line[1] = words[1]
       table.remove(words, 1)
     else
-      line = words[1]:sub(1, size)
+      line[1] = words[1]:sub(1, size)
       words[1] = words[1]:sub(size + 1, -1)
     end
   else
-    while words[1] and (#line + string.len(words[1]) + 1 <= size) or (line == "" and #words[1] == size) do
-      if line == "" then
-        line = words[1]
-      else
-        line = line .. " " .. words[1]
-      end
+    local len = 0
+    while words[1] and (len + #words[1] + 1 <= size) or (len == 0 and #words[1] == size) do
+      line[#line+1] = words[1]
+      len = len + #words[1] + 1
       table.remove(words, 1)
     end
   end
-  return line, words
+  return table.concat(line, " "), words
 end
 
 local wordwrap = function(str, size, pad, overflow)
@@ -55,17 +53,13 @@ local wordwrap = function(str, size, pad, overflow)
   pad = pad or 0
 
   local line = ""
-  local out = ""
+  local out = {}
   local padstr = string.rep(" ", pad)
   local words = split(str, ' ')
 
   while words[1] do
     line, words = buildline(words, size, overflow)
-    if out == "" then
-      out = padstr .. line
-    else
-        out = out .. "\n" .. padstr .. line
-    end
+    out[#out+1] = padstr .. line
   end
 
   return out
@@ -513,7 +507,7 @@ function cli:print_help(noprint)
 
   local append = function(label, desc)
       label = "  " .. label .. string.rep(" ", col1 - (#label + 2))
-      desc = wordwrap(desc, col2)   -- word-wrap
+      desc = table.concat(wordwrap(desc, col2), "\n")   -- word-wrap
       desc = desc:gsub("\n", "\n" .. string.rep(" ", col1)) -- add padding
 
       msg = msg .. label .. desc .. "\n"
