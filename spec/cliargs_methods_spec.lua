@@ -75,7 +75,7 @@ describe("Testing cliargs library methods/functions", function()
       expected = { "123456789", "123456789", "123456789", "!" }
       assert.is.same(result, expected)
 
-      result = cli.wordwrap(text, 9, nil, true)
+      result = cli.wordwrap(text, 9, true)
       expected = { "123456789", "123456789", "123456789!" }
       assert.is.same(result, expected)
 

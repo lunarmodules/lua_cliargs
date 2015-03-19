@@ -27,7 +27,7 @@ local buildline = function(words, size, overflow)
   -- if overflow is set, a word longer than size, will overflow the size
   -- otherwise it will be chopped in line-length pieces
   local line = {}
-  if string.len(words[1]) > size then
+  if #words[1] > size then
     -- word longer than line
     if overflow then
       line[1] = words[1]
@@ -47,21 +47,13 @@ local buildline = function(words, size, overflow)
   return table.concat(line, " "), words
 end
 
-local wordwrap = function(str, size, pad, overflow)
+local wordwrap = function(str, size, overflow)
   -- if overflow is set, then words longer than a line will overflow
   -- otherwise, they'll be chopped in pieces
-  pad = pad or 0
-
-  local line = ""
-  local out = {}
-  local padstr = string.rep(" ", pad)
-  local words = split(str, ' ')
-
+  local out, words = {}, split(str, ' ')
   while words[1] do
-    line, words = buildline(words, size, overflow)
-    out[#out+1] = padstr .. line
+    out[#out+1], words = buildline(words, size, overflow)
   end
-
   return out
 end
 
