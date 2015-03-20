@@ -71,6 +71,24 @@ local wordwrap = function(str, size, pad, overflow)
   return out
 end
 
+local function cleanup()
+  if not _TEST then
+    -- cleanup entire module, as it's single use
+    -- remove from package.loaded table to enable the module to
+    -- garbage collected.
+    for k, v in pairs(package.loaded) do
+      if v == cli then
+        package.loaded[k] = nil
+        break
+      end
+    end
+    -- clear table in case user holds on to module table
+    for k, _ in pairs(cli) do
+      cli[k] = nil
+    end
+  end
+end
+
 local function disect(key)
   -- characters allowed are a-z, A-Z, 0-9
   -- extended + values also allow; # @ _ + -
@@ -103,6 +121,7 @@ end
 function cli_error(msg, noprint)
   local msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
   if not noprint then print(msg) end
+  cleanup()
   return nil, msg
 end
 
@@ -501,21 +520,7 @@ function cli:parse(arguments, noprint, dump)
     return cli_error("commandline dump created as requested per '--__DUMP__' option", noprint)
   end
 
-  if not _TEST then
-    -- cleanup entire module, as it's single use
-    -- remove from package.loaded table to enable the module to
-    -- garbage collected.
-    for k, v in pairs(package.loaded) do
-      if v == cli then
-        package.loaded[k] = nil
-        break
-      end
-    end
-    -- clear table in case user holds on to module table
-    for k, _ in pairs(cli) do
-      cli[k] = nil
-    end
-  end
+  cleanup()
 
   return results
 end
