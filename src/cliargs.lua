@@ -131,6 +131,9 @@ function cli:__lookup(k, ek, t)
   for _,entry in ipairs(t) do
     if k  and entry.key == k then return entry end
     if ek and entry.expanded_key == ek then return entry end
+    if entry.has_no_flag then
+      if ek and ("no-"..entry.expanded_key) == ek then return entry end
+    end
   end
 
   return nil
@@ -189,6 +192,38 @@ function cli:optarg(key, desc, default, maxcount, callback)
   if #key > self.maxlabel then self.maxlabel = #key end
 end
 
+-- Used internally to add an option
+function cli:__add_opt(k, ek, v, label, desc, default, callback)
+  local flag = (v == nil) -- no value, so it's a flag
+  local has_no_flag = flag and (ek and ek:find('^%[no%-]') ~= nil)
+  local ek = has_no_flag and ek:sub(6) or ek
+
+  -- guard against duplicates
+  if self:__lookup(k, ek) then
+    error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
+  end
+  if has_no_flag and self:__lookup(nil, "no-"..ek) then
+    error("Duplicate option: " .. ("no-"..ek) .. ", please rename one of them.")
+  end
+
+  -- below description of full entry record, nils included for reference
+  local entry = {
+    key = k,
+    expanded_key = ek,
+    desc = desc,
+    default = default,
+    label = label,
+    flag = flag,
+    has_no_flag = has_no_flag,
+    value = default,
+    callback = callback,
+  }
+
+  table.insert(self.optional, entry)
+  if #label > self.maxlabel then self.maxlabel = #label end
+
+end
+
 --- Defines an option.
 --- Optional arguments can use 3 different notations, and can accept a value.
 --- *Aliases: `add_option`*
@@ -223,7 +258,7 @@ function cli:add_opt(key, desc, default, callback)
     (
       type(default) == "string"
       or default == nil
-      or default == false
+      or type(default) == "boolean"
       or (type(default) == "table" and next(default) == nil)
     ),
     "Default argument: expected a string, nil, or {}"
@@ -231,33 +266,10 @@ function cli:add_opt(key, desc, default, callback)
 
   local k, ek, v = disect(key)
 
-  if default == false and v ~= nil then
-    error("A flag type option cannot have a value set: " .. key)
-  end
-
-  -- guard against duplicates
-  if self:__lookup(k, ek) then
-    error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
-  end
-
   -- set defaults
-  if v == nil then default = nil end   -- no value, set it's a flag, so set default to nil
+  if v == nil and type(default) ~= "boolean" then default = nil end
 
-  -- below description of full entry record, nils included for reference
-  local entry = {
-    key = k,
-    expanded_key = ek,
-    desc = desc,
-    default = default,
-    label = key,
-    flag = (v == nil), -- no value, so it's a flag
-    value = default,
-    callback = callback,
-  }
-
-  table.insert(self.optional, entry)
-  if #key > self.maxlabel then self.maxlabel = #key end
-
+  self:__add_opt(k, ek, v, key, desc, default, callback)
 end
 
 --- Define a flag argument (on/off). This is a convenience helper for cli.add_opt().
@@ -266,9 +278,22 @@ end
 --- ### Parameters
 -- 1. **key**: the argument's key
 -- 2. **desc**: a description of the argument to be displayed in the help listing
+-- 3. **default**: *optional*; specify a default value (the default is nil)
 -- 4. **callback**: *optional*; specify a function to call when this flag is parsed (the default is nil)
-function cli:add_flag(key, desc, callback)
-  self:add_opt(key, desc, false, callback)
+function cli:add_flag(key, desc, default, callback)
+  if type(default) == "function" then
+    callback = default
+    default = nil
+  end
+  assert(default == nil or type(default) == "boolean", "Default argument: expected a boolean, nil")
+
+  local k, ek, v = disect(key)
+
+  if v ~= nil then
+    error("A flag type option cannot have a value set: " .. key)
+  end
+
+  self:__add_opt(k, ek, nil, key, desc, default, callback)
 end
 
 --- Parses the arguments found in #arg and returns a table with the populated values.
@@ -363,7 +388,7 @@ function cli:parse(arguments, noprint, dump)
           if optval then
             return cli_error("flag --" .. optkey .. " does not take a value", noprint)
           else
-            optval = true
+            optval = not entry.has_no_flag or (optkey:sub(1,3) ~= "no-")
           end
         else
           if not optval then
@@ -389,6 +414,8 @@ function cli:parse(arguments, noprint, dump)
 
       if optkey == entry.key then
         altkey = entry.expanded_key
+      else
+        optkey = entry.expanded_key
       end
 
       local status, err = entry.callback(optkey, optval, altkey, opt)
@@ -595,7 +622,10 @@ function cli:print_help(noprint)
     for _,entry in ipairs(self.optional) do
       local desc = entry.desc
       if not entry.flag and entry.default and #tostring(entry.default) > 0 then
-        readable_default = type(entry.default) == "table" and "[]" or tostring(entry.default)
+        local readable_default = type(entry.default) == "table" and "[]" or tostring(entry.default)
+        desc = desc .. " (default: " .. readable_default .. ")"
+      elseif entry.flag and entry.has_no_flag then
+        local readable_default = entry.default and 'on' or 'off'
         desc = desc .. " (default: " .. readable_default .. ")"
       end
       append(entry.label, desc)
