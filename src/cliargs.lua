@@ -650,7 +650,7 @@ end
 cli._COPYRIGHT   = "Copyright (C) 2011-2014 Ahmad Amireh"
 cli._LICENSE     = "The code is released under the MIT terms. Feel free to use it in both open and closed software as you please."
 cli._DESCRIPTION = "Commandline argument parser for Lua"
-cli._VERSION     = "cliargs 2.4-1"
+cli._VERSION     = "cliargs 2.5-0"
 
 -- aliases
 cli.add_argument = cli.add_arg
