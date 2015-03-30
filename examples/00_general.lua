@@ -7,7 +7,7 @@ Try this file with the following commands lines;
 
 --]]
 
-local cli = require "cliargs"
+local cli = require "../src/cliargs"
 
 local function print_version(key, value, altkey)
   -- this is called when the flag -v or --version is set
@@ -38,6 +38,9 @@ cli:set_name("cli_example.lua")
   cli:add_flag("-v, --version", "prints the program's version and exits", print_version)
   -- A flag with --expanded-key notation only
   cli:add_flag("--verbose", "the script output will be very verbose")
+  -- A flag that can be negated using --no- as a prefix, but you'll still have
+  -- to access its value without that prefix. See below for an example.
+  cli:add_flag('--[no-]ice-cream', 'ice cream, or not', true)
 
 -- Parses from _G['arg']
 local args = cli:parse(arg)
@@ -45,6 +48,9 @@ local args = cli:parse(arg)
 if not args then
   -- something wrong happened and an error was printed
   os.exit(1)
+elseif not args['ice-cream'] then
+  print('kernel panic: NO ICE CREAM?!11')
+  os.exit(1000)
 end
 
 -- argument parsing was successful, arguments can be found in `args`
@@ -69,4 +75,8 @@ if #args['c'] == 0 or args['c'] == 'none' then
   print("Won't be compressing")
 else
   print("Compressing using " .. args['c'])
+end
+
+if args['ice-cream'] then
+  print('And, one ice cream for you.')
 end
