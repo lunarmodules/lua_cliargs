@@ -8,14 +8,30 @@ function abort {
   exit 1
 }
 
+function confirm {
+  echo "${1} [y/N]"
+  read confirmation
+
+  if [ "${confirmation}" != "y" ]; then
+    exit 0
+  fi
+}
+
 [ -z "${GITHUB_TOKEN}"  ] && abort "Missing GITHUB_TOKEN env variable."
 [ -z "${GITHUB_USER}"   ] && abort "Missing GITHUB_USER env variable."
 [ -z "${GITHUB_REPO}"   ] && abort "Missing GITHUB_REPO env variable."
 
-VERSION=$(grep "version" lua_cliargs-*.rockspec | cut -d' ' -f3 | sed 's/"//g')
+VERSION=$1
+SRC_FILE="src/cliargs.lua"
+# VERSION=$(grep "version" lua_cliargs-*.rockspec | cut -d' ' -f3 | sed 's/"//g')
 SRC_VERSION=$(grep "_VERSION" src/cliargs.lua | sed -e 's/.*=//' -e 's/.* //' -e 's/"//g')
 
-[ "${VERSION}" != "${SRC_VERSION}" ] && abort "Verion in rockspec does not match source"
+NEW_ROCKSPEC="lua_cliargs-${VERSION}.rockspec"
+OLD_ROCKSPEC="lua_cliargs-${SRC_VERSION}.rockspec"
+
+if [ "${VERSION}" == "${SRC_VERSION}" ]; then
+  abort "Version specified is the same as the current one in rockspec"
+fi
 
 # Publish to GitHub
 JSON_PAYLOAD=$(
@@ -32,6 +48,31 @@ JSON_PAYLOAD=$(
 echo $JSON_PAYLOAD
 echo "Releasing version ${VERSION}..."
 
+if [ ! -f $OLD_ROCKSPEC ]; then
+  abort "Version in ${SRC_FILE} does not match the rockspec file!"
+fi
+
+# rename rockspec file
+mv $OLD_ROCKSPEC $NEW_ROCKSPEC
+
+# bump version in rockspec
+perl -p -i -e "s/${SRC_VERSION}/${VERSION}/g" $NEW_ROCKSPEC
+
+# bump version in src
+perl -p -i -e "s/${SRC_VERSION}/${VERSION}/"  $SRC_FILE
+
+confirm "rockspec and source file have been modified, please confirm the changes. Proceed?"
+
+echo "Creating git release v${VERSION}..."
+
+git add $NEW_ROCKSPEC
+git rm  $OLD_ROCKSPEC
+git add $SRC_FILE
+git commit -m "Release v${VERSION}"
+
+echo "Done."
+confirm "Create a new GitHub release?"
+
 # the API will automatically create the tag for us, no need to do it manually!
 curl \
   --data "$JSON_PAYLOAD" \
@@ -39,5 +80,11 @@ curl \
   -H "Content-Type: application/json; charset=utf-8" \
   -H "Accept: application/json" \
   "https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/releases?access_token=${GITHUB_TOKEN}"
+
+echo "Done."
+
+confirm "Publish to luarocks?"
+
+luarocks upload $NEW_ROCKSPEC
 
 echo -e "\e[00;32m[ SUCCESS ]\e[00m"
