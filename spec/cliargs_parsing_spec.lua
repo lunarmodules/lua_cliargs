@@ -1,9 +1,12 @@
-local cli, defaults, result
+-- luacheck: globals describe it before_each, ignore dump
+
+local cli
 
 -- some helper stuff for debugging
 local quoted = function(s)
   return "'" .. tostring(s) .. "'"
 end
+
 local dump = function(t)
   print(" ============= Dump " .. tostring(t) .. " =============")
   if type(t) ~= "table" then
@@ -22,6 +25,7 @@ local function populate_required()
 
   return { ["INPUT"] = nil }
 end
+
 local function populate_optarg(cnt)
   cnt = cnt or 1
   cli:optarg("OUTPUT", "path to the output file", "./out", cnt)
@@ -31,12 +35,14 @@ local function populate_optarg(cnt)
     return { OUTPUT = {"./out"}}
   end
 end
+
 local function populate_optionals()
   cli:add_option("-c, --compress=FILTER", "the filter to use for compressing output: gzip, lzma, bzip2, or none", "gzip")
   cli:add_option("-o FILE", "path to output file", "/dev/stdout")
 
   return { c = "gzip", compress = "gzip", o = "/dev/stdout" }
 end
+
 local function populate_flags()
   cli:add_flag("-v, --version", "prints the program's version and exits")
   cli:add_flag("-d", "script will run in DEBUG mode")
@@ -47,16 +53,7 @@ end
 
 -- start tests
 describe("Testing cliargs library parsing commandlines", function()
-  setup(function()
-    _G._TEST = true
-  end)
-
-  teardown(function()
-    _G._TEST = nil
-  end)
-
   before_each(function()
-    _G.arg = nil
     package.loaded.cliargs = nil  -- Busted uses it, but must force to reload
     cli = require("cliargs")
   end)
@@ -68,11 +65,10 @@ describe("Testing cliargs library parsing commandlines", function()
   end)
 
   it("tests uses global arg if arguments set not passed in", function()
-    _G.arg = { "--version" }
     local defaults = populate_flags(cli)
     defaults.v = true
     defaults.version = true
-    local result = cli:parse(true --[[no print]])
+    local result = cli:parse({ "--version" }, true --[[no print]])
     assert.are.same(result, defaults)
   end)
 
@@ -119,10 +115,9 @@ describe("Testing cliargs library parsing commandlines", function()
   end)
 
   it("tests option using -short-key value notation", function()
-    _G.arg = { "-out", "outfile" }
     cli:add_opt("-out VALUE", "output file")
     local defaults = { out = "outfile" }
-    local result = cli:parse()
+    local result = cli:parse({ "-out", "outfile" })
     assert.are.same(result, defaults)
   end)
 
@@ -241,7 +236,7 @@ describe("Testing cliargs library parsing commandlines", function()
       it("works", function()
         local defaults = populate_flags(cli)
         defaults.verbose = true
-        result = cli:parse({ "--verbose" })
+        local result = cli:parse({ "--verbose" })
         assert.are.same(result, defaults)
       end)
     end)
@@ -302,31 +297,31 @@ describe("Testing cliargs library parsing commandlines", function()
   end)
 
   it("tests optarg only, defaults, multiple allowed", function()
-    defaults = populate_optarg(3)
-    local result,err = cli:parse(true --[[no print]])
+    local defaults = populate_optarg(3)
+    local result = cli:parse(defaults, true --[[no print]])
     assert.is.same(defaults, result)
   end)
 
   it("tests optarg only, defaults, 1 allowed", function()
-    defaults = populate_optarg(1)
-    local result = cli:parse(true --[[no print]])
+    local defaults = populate_optarg(1)
+    local result = cli:parse(defaults, true --[[no print]])
     assert.is.same(defaults, result)
   end)
 
   it("tests optarg only, values, multiple allowed", function()
-    defaults = populate_optarg(3)
+    populate_optarg(3)
     local result = cli:parse({"/output1/", "/output2/"}, true --[[no print]])
     assert.is.same(result, { OUTPUT = {"/output1/", "/output2/"}})
   end)
 
   it("tests optarg only, values, 1 allowed", function()
-    local defaults = populate_optarg(1)
+    populate_optarg(1)
     local result = cli:parse({"/output/"}, true --[[no print]])
     assert.is.same(result, { OUTPUT = "/output/" })
   end)
 
   it("tests optarg only, too many values", function()
-    local defaults = populate_optarg(1)
+    populate_optarg(1)
     local result = cli:parse({"/output1/", "/output2/"}, true --[[no print]])
     assert.is.same(result, nil)
   end)
@@ -352,12 +347,12 @@ describe("Testing cliargs library parsing commandlines", function()
   describe("Tests options parsing with callback", function()
     local cb = {}
 
-    local function callback(key, value, altkey, opt)
+    local function callback(key, value, altkey)
       cb.key, cb.value, cb.altkey = key, value, altkey
       return true
     end
 
-    local function callback_fail(key, value, altkey, opt)
+    local function callback_fail(_, _, _, opt)
       return nil, "bad argument to " .. opt
     end
 
@@ -428,7 +423,7 @@ describe("Testing cliargs library parsing commandlines", function()
       return true
     end
 
-    local function callback_fail(key, value)
+    local function callback_fail(key)
       return nil, "bad argument for " .. key
     end
 
@@ -448,7 +443,6 @@ describe("Testing cliargs library parsing commandlines", function()
     it("tests required argument callback returning error", function()
       cli:set_name('myapp')
       cli:add_arg("ARG", "arg description", callback_fail)
-      local expected = { ARG = "arg_val" }
       local result, err = cli:parse({ "arg_val" }, true --[[no print]])
       assert(result == nil, "Failure in callback returns nil")
       assert(type(err) == "string", "Expected an error string")
@@ -479,7 +473,6 @@ describe("Testing cliargs library parsing commandlines", function()
     it("tests optional argument callback returning error", function()
       cli:set_name('myapp')
       cli:optarg("OPTARG", "optinoal arg description", nil, 1, callback_fail)
-      local expected = { ARG = "arg_val" }
       local result, err = cli:parse({ "opt_arg" }, true --[[no print]])
       assert(result == nil, "Failure in callback returns nil")
       assert(type(err) == "string", "Expected an error string")
