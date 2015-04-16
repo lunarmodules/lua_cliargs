@@ -3,3 +3,4 @@
 /.env.local
 /*.rock
 **/.*.swp
+/.luacheckcache

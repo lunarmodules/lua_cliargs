@@ -9,6 +9,6 @@
 #   $ cat luacov.report.out
 
 busted -c
-luacov src/cliargs.lua
+luacov src/
 rm luacov.stats.out
 grep -zPo "(?s)={10,}\nSummary\n={10,}.+" luacov.report.out

@@ -1,89 +1,14 @@
-
--- some helper stuff for debugging
-local quoted = function(s)
-  return "'" .. tostring(s) .. "'"
-end
-local dump = function(t)
-  print(" ============= Dump " .. tostring(t) .. " =============")
-  if type(t) ~= "table" then
-    if type(t) == "string" then
-      print(quoted(tostring(t)))
-    else
-      print(tostring(t))
-    end
-  else
-    for k,v in pairs(t) do
-      if type(v) == "string" then
-        print(quoted(k),quoted(v))
-      else
-        print(quoted(k),tostring(v))
-      end
-    end
-  end
-  print(" ============= Dump " .. tostring(t) .. " =============")
-end
+-- luacheck: globals describe it before_each setup teardown, ignore dump print
 
 local cli
--- start tests
+
 describe("Testing cliargs library methods/functions", function()
+  setup(function()
+    if cli then cli:cleanup() end
+    cli = require("cliargs")
+  end)
 
   describe("testing private functions", function()
-
-    setup(function()
-      _G._TEST = true
-      package.loaded.cliargs = nil  -- Busted uses it, but must force to reload to test it with _TEST
-      cli = require("cliargs")
-    end)
-
-    teardown(function()
-      _G._TEST = nil
-    end)
-
-    it("tests the private split() function", function()
-      -- takes: str, split-char
-      local expected, result
-
-      result = cli.split("hello,world",",")
-      expected = {"hello", "world"}
-      assert.is.same(result, expected)
-
-      result = cli.split("hello,world,",",")
-      expected = {"hello", "world"}
-      assert.is.same(result, expected)
-
-      result = cli.split("hello",",")
-      expected = {"hello"}
-      assert.is.same(result, expected)
-
-      result = cli.split("",",")
-      expected = {}
-      assert.is.same(result, expected)
-
-    end)
-
-    it("tests the private wordwrap() function", function()
-      -- takes: text, size, padding
-      local text = "123456789 123456789 123456789!"
-      local expected, result
-
-      result = cli.wordwrap(text, 10)
-      expected = "123456789\n123456789\n123456789!"
-      assert.is.same(result, expected)
-
-      -- exact length + 1 overflow
-      result = cli.wordwrap(text, 9)
-      expected = "123456789\n123456789\n123456789\n!"
-      assert.is.same(result, expected)
-
-      result = cli.wordwrap(text, 9, nil, true)
-      expected = "123456789\n123456789\n123456789!"
-      assert.is.same(result, expected)
-
-      result = cli.wordwrap(text, 8)
-      expected = "12345678\n9\n12345678\n9\n12345678\n9!"
-      assert.is.same(result, expected)
-    end)
-
     it("tests the optarg() method", function()
       local key, desc, default, maxcount = "LastArg", "The lastarg description", "lastarg default", 3
       local expected = { key = key, desc = desc, default = default, maxcount = maxcount}
@@ -94,23 +19,9 @@ describe("Testing cliargs library methods/functions", function()
   end)   -- private functions
 
   describe("testing public functions", function()
-
-    setup(function()
-      _G._TEST = true
-      package.loaded.cliargs = nil  -- Busted uses it, but must force to reload to test it with _TEST
-      cli = require("cliargs")
-    end)
-
-    teardown(function()
-      _G._TEST = nil
-    end)
-
     before_each(function()
       cli.optional = {}
       cli.required = {}
-    end)
-
-    after_each(function()
     end)
 
     it("tests the add_arg() method", function()
@@ -187,7 +98,7 @@ describe("Testing cliargs library methods/functions", function()
 
         it("should work with a short-key that is longer than 1 character", function()
           -- takes: key, descr, default
-          local key, desc, default = "-Wno-unsigned", "thedescription"
+          local key, desc, default = "-Wno-unsigned", "thedescription", nil
           cli:add_opt(key, desc, default)
 
           assert.are.equal(cli.optional[1].key, "Wno-unsigned")
@@ -286,9 +197,6 @@ describe("Testing cliargs library methods/functions", function()
 
       before_each(function()
         touched = nil
-      end)
-
-      after_each(function()
       end)
 
       it("tests whether print_help() does not print anything, if noprint is set (includes print_usage())", function()

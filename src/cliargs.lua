@@ -4,106 +4,25 @@ local cli, _
 -- Helpers --
 -- ------- --
 
-local split = function(str, pat)
-  local t = {}
-  local fpat = "(.-)" .. pat
-  local last_end = 1
-  local s, e, cap = str:find(fpat, 1)
-  while s do
-    if s ~= 1 or cap ~= "" then
-      table.insert(t,cap)
-    end
-    last_end = e+1
-    s, e, cap = str:find(fpat, last_end)
-  end
-  if last_end <= #str then
-    cap = str:sub(last_end)
-    table.insert(t, cap)
-  end
-  return t
-end
+local disect = require('utils/disect')
+local split = require('utils/split')
+local wordwrap = require('utils/wordwrap')
 
-local buildline = function(words, size, overflow)
-  -- if overflow is set, a word longer than size, will overflow the size
-  -- otherwise it will be chopped in line-length pieces
-  local line = ""
-  if string.len(words[1]) > size then
-    -- word longer than line
-    if overflow then
-      line = words[1]
-      table.remove(words, 1)
-    else
-      line = words[1]:sub(1, size)
-      words[1] = words[1]:sub(size + 1, -1)
-    end
-  else
-    while words[1] and (#line + string.len(words[1]) + 1 <= size) or (line == "" and #words[1] == size) do
-      if line == "" then
-        line = words[1]
-      else
-        line = line .. " " .. words[1]
-      end
-      table.remove(words, 1)
-    end
-  end
-  return line, words
-end
-
-local wordwrap = function(str, size, pad, overflow)
-  -- if overflow is set, then words longer than a line will overflow
-  -- otherwise, they'll be chopped in pieces
-  pad = pad or 0
-
-  local line = ""
-  local out = ""
-  local padstr = string.rep(" ", pad)
-  local words = split(str, ' ')
-
-  while words[1] do
-    line, words = buildline(words, size, overflow)
-    if out == "" then
-      out = padstr .. line
-    else
-        out = out .. "\n" .. padstr .. line
-    end
-  end
-
-  return out
-end
-
-local function disect(key)
-  -- characters allowed are a-z, A-Z, 0-9
-  -- extended + values also allow; # @ _ + -
-  local k, ek, v
-  local dummy
-  -- if there is no comma, between short and extended, add one
-  _, _, dummy = key:find("^%-([%a%d]+)[%s]%-%-")
-  if dummy then key = key:gsub("^%-[%a%d][%s]%-%-", "-"..dummy..", --", 1) end
-  -- for a short key + value, replace space by "="
-  _, _, dummy = key:find("^%-([%a%d]+)[%s]")
-  if dummy then key = key:gsub("^%-([%a%d]+)[ ]", "-"..dummy.."=", 1) end
-  -- if there is no "=", then append one
-  if not key:find("=") then key = key .. "=" end
-  -- get value
-  _, _, v = key:find(".-%=(.+)")
-  -- get key(s), remove spaces
-  key = split(key, "=")[1]:gsub(" ", "")
-  -- get short key & extended key
-  _, _, k = key:find("^%-([^-][^%s,]*)")
-  _, _, ek = key:find("%-%-(.+)$")
-  if v == "" then v = nil end
-  return k,ek,v
-end
+-- TODO: can we stop branching based off of the environment?
+local IN_TEST = _G['_TEST']
 
 local function callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
 end
 
+local function cli_error(msg, noprint)
+  local full_msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
 
-function cli_error(msg, noprint)
-  local msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
-  if not noprint then print(msg) end
-  return nil, msg
+  if not noprint then
+    print(full_msg)
+  end
+
+  return nil, full_msg
 end
 
 -- -------- --
@@ -127,7 +46,6 @@ end
 -- Used internally to lookup an entry using either its short or expanded keys
 function cli:__lookup(k, ek, t)
   t = t or self.optional
-  local _
   for _,entry in ipairs(t) do
     if k  and entry.key == k then return entry end
     if ek and entry.expanded_key == ek then return entry end
@@ -193,10 +111,10 @@ function cli:optarg(key, desc, default, maxcount, callback)
 end
 
 -- Used internally to add an option
-function cli:__add_opt(k, ek, v, label, desc, default, callback)
+function cli:__add_opt(k, expanded_key, v, label, desc, default, callback)
   local flag = (v == nil) -- no value, so it's a flag
-  local has_no_flag = flag and (ek and ek:find('^%[no%-]') ~= nil)
-  local ek = has_no_flag and ek:sub(6) or ek
+  local has_no_flag = flag and (expanded_key and expanded_key:find('^%[no%-]') ~= nil)
+  local ek = has_no_flag and expanded_key:sub(6) or expanded_key
 
   -- guard against duplicates
   if self:__lookup(k, ek) then
@@ -309,14 +227,21 @@ end
 --- ### Returns
 --- 1. a table containing the keys specified when the arguments were defined along with the parsed values,
 --- or nil + error message (--help option is considered an error and returns nil + help message)
-function cli:parse(arguments, noprint, dump)
+function cli:parse(arguments, noprint, dump, nocleanup)
   if type(arguments) ~= "table" then
     -- optional 'arguments' was not provided, so shift remaining arguments
     noprint, dump, arguments = arguments, noprint, nil
   end
-  local arguments = arguments or arg or {}
+
+  if not arguments then
+    arguments = arg or {}
+  end
+
+  -- clone args, don't mutate the original set:
   local args = {}
-  for k,v in pairs(arguments) do args[k] = v end  -- copy args local
+  for k,v in pairs(arguments) do
+    args[k] = v
+  end
 
   -- starts with --help? display the help listing and abort!
   if args[1] and (args[1] == "--help" or args[1] == "-h") then
@@ -334,7 +259,7 @@ function cli:parse(arguments, noprint, dump)
   while args[1] do
     local entry = nil
     local opt = args[1]
-    local _, optpref, optkey, optkey2, optval
+    local optpref, optkey, optkey2, optval
     _, _, optpref, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
     if optkey then
       _, _, optkey2, optval = optkey:find("(.-)[=](.+)")       -- split value and key
@@ -435,7 +360,7 @@ function cli:parse(arguments, noprint, dump)
   end
 
   -- deal with required args here
-  for i, entry in ipairs(self.required) do
+  for _, entry in ipairs(self.required) do
     entry.value = args[1]
     if entry.callback then
       local status, err = entry.callback(entry.key, entry.value)
@@ -492,7 +417,7 @@ function cli:parse(arguments, noprint, dump)
 
     print("\n======= Parsed command line ===============")
     if #self.required > 0 then print("\nArguments:") end
-    for i,v in ipairs(self.required) do
+    for _,v in ipairs(self.required) do
       print("  " .. v.key .. string.rep(" ", self.maxlabel + 2 - #v.key) .. " => '" .. v.value .. "'")
     end
 
@@ -528,23 +453,27 @@ function cli:parse(arguments, noprint, dump)
     return cli_error("commandline dump created as requested per '--__DUMP__' option", noprint)
   end
 
-  if not _TEST then
-    -- cleanup entire module, as it's single use
-    -- remove from package.loaded table to enable the module to
-    -- garbage collected.
-    for k, v in pairs(package.loaded) do
-      if v == cli then
-        package.loaded[k] = nil
-        break
-      end
-    end
-    -- clear table in case user holds on to module table
-    for k, _ in pairs(cli) do
-      cli[k] = nil
-    end
+  if not nocleanup then
+    self:cleanup()
   end
 
   return results
+end
+
+-- cleanup entire module, as it's single use
+-- remove from package.loaded table to enable the module to
+-- garbage collected.
+function cli.cleanup()
+  for k, v in pairs(package.loaded) do
+    if v == cli then
+      package.loaded[k] = nil
+      break
+    end
+  end
+  -- clear table in case user holds on to module table
+  for k, _ in pairs(cli) do
+    cli[k] = nil
+  end
 end
 
 --- Prints the USAGE heading.
@@ -579,7 +508,6 @@ function cli:print_usage(noprint)
   if not noprint then print(msg) end
   return msg
 end
-
 
 --- Prints the HELP information.
 ---
@@ -645,7 +573,6 @@ function cli:set_colsz(key_cols, desc_cols)
   self.colsz = { key_cols or self.colsz[1], desc_cols or self.colsz[2] }
 end
 
-
 -- finalize setup
 cli._COPYRIGHT   = "Copyright (C) 2011-2014 Ahmad Amireh"
 cli._LICENSE     = "The code is released under the MIT terms. Feel free to use it in both open and closed software as you please."
@@ -658,7 +585,7 @@ cli.add_option = cli.add_opt
 cli.parse_args = cli.parse    -- backward compatibility
 
 -- test aliases for local functions
-if _TEST then
+if IN_TEST then
   cli.split = split
   cli.wordwrap = wordwrap
 end
