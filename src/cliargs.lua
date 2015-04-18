@@ -5,13 +5,9 @@ local cli, _
 -- ------- --
 
 local disect = require('utils/disect')
-local split = require('utils/split')
 local wordwrap = require('utils/wordwrap')
 
--- TODO: can we stop branching based off of the environment?
-local IN_TEST = _G['_TEST']
-
-local function callable(fn)
+local function is_callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
 end
 
@@ -31,6 +27,7 @@ end
 
 cli = {
   name = "",
+  description = "",
   required = {},
   optional = {},
   optargument = {maxcount = 0},
@@ -38,23 +35,35 @@ cli = {
   maxlabel = 0,
 }
 
---- Assigns the name of the program which will be used for logging.
-function cli:set_name(name)
-  self.name = name
-end
-
 -- Used internally to lookup an entry using either its short or expanded keys
-function cli:__lookup(k, ek, t)
-  t = t or self.optional
+local function lookup(_cli, k, ek, argtable)
+  local t = argtable or _cli.optional
+
   for _,entry in ipairs(t) do
-    if k  and entry.key == k then return entry end
-    if ek and entry.expanded_key == ek then return entry end
+    if k  and entry.key == k then
+      return entry
+    end
+
+    if ek and entry.expanded_key == ek then
+      return entry
+    end
+
     if entry.has_no_flag then
       if ek and ("no-"..entry.expanded_key) == ek then return entry end
     end
   end
 
   return nil
+end
+
+--- Assigns the name of the program which will be used for logging.
+function cli:set_name(name)
+  self.name = name
+end
+
+--- Write down a brief, 1-liner description of what the program does.
+function cli:set_description(description)
+  self.description = description
 end
 
 --- Defines a required argument.
@@ -72,9 +81,9 @@ end
 --- `cli:add_arg("root", "path to where root scripts can be found")`
 function cli:add_arg(key, desc, callback)
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
-  assert(callable(callback) or callback == nil, "Callback argument: expected a function or nil")
+  assert(is_callable(callback) or callback == nil, "Callback argument: expected a function or nil")
 
-  if self:__lookup(key, nil, self.required) then
+  if lookup(self, key, nil, self.required) then
     error("Duplicate argument: " .. key .. ", please rename one of them.")
   end
 
@@ -104,7 +113,7 @@ function cli:optarg(key, desc, default, maxcount, callback)
   maxcount = maxcount or 1
   maxcount = tonumber(maxcount)
   assert(maxcount and maxcount>0 and maxcount<1000,"Maxcount must be a number from 1 to 999")
-  assert(callable(callback) or callback == nil, "Callback argument: expected a function or nil")
+  assert(is_callable(callback) or callback == nil, "Callback argument: expected a function or nil")
 
   self.optargument = { key = key, desc = desc, default = default, maxcount = maxcount, value = nil, callback = callback }
   if #key > self.maxlabel then self.maxlabel = #key end
@@ -117,10 +126,11 @@ function cli:__add_opt(k, expanded_key, v, label, desc, default, callback)
   local ek = has_no_flag and expanded_key:sub(6) or expanded_key
 
   -- guard against duplicates
-  if self:__lookup(k, ek) then
+  if lookup(self, k, ek) then
     error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
   end
-  if has_no_flag and self:__lookup(nil, "no-"..ek) then
+
+  if has_no_flag and lookup(self, nil, "no-"..ek) then
     error("Duplicate option: " .. ("no-"..ek) .. ", please rename one of them.")
   end
 
@@ -171,7 +181,7 @@ function cli:add_opt(key, desc, default, callback)
   -- 8. --expanded=VALUE
 
   assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
-  assert(callable(callback) or callback == nil, "Callback argument: expected a function or nil")
+  assert(is_callable(callback) or callback == nil, "Callback argument: expected a function or nil")
   assert(
     (
       type(default) == "string"
@@ -283,9 +293,11 @@ function cli:parse(arguments, noprint, dump, nocleanup)
     end
 
     if optkey then
-      entry =
-        self:__lookup(optpref == '-' and optkey or nil,
-                      optpref == '--' and optkey or nil)
+      entry = lookup(
+        self,
+        optpref == '-' and optkey or nil,
+        optpref == '--' and optkey or nil
+      )
     end
 
     if not optkey or not entry then
@@ -307,7 +319,8 @@ function cli:parse(arguments, noprint, dump, nocleanup)
       end
     elseif optpref == "--" then
       -- using the expanded-key notation
-      entry = self:__lookup(nil, optkey)
+      entry = lookup(self, nil, optkey)
+
       if entry then
         if entry.flag then
           if optval then
@@ -583,11 +596,5 @@ cli._VERSION     = "cliargs 2.5-5"
 cli.add_argument = cli.add_arg
 cli.add_option = cli.add_opt
 cli.parse_args = cli.parse    -- backward compatibility
-
--- test aliases for local functions
-if IN_TEST then
-  cli.split = split
-  cli.wordwrap = wordwrap
-end
 
 return cli
