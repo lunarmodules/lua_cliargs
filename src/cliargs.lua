@@ -11,7 +11,7 @@ local function is_callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
 end
 
-local function cli_error(msg, noprint)
+local function on_error(msg, noprint)
   local full_msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
 
   if not noprint then
@@ -120,17 +120,17 @@ function cli:optarg(key, desc, default, maxcount, callback)
 end
 
 -- Used internally to add an option
-function cli:__add_opt(k, expanded_key, v, label, desc, default, callback)
+local function really_add_option(_cli, k, expanded_key, v, label, desc, default, callback)
   local flag = (v == nil) -- no value, so it's a flag
   local has_no_flag = flag and (expanded_key and expanded_key:find('^%[no%-]') ~= nil)
   local ek = has_no_flag and expanded_key:sub(6) or expanded_key
 
   -- guard against duplicates
-  if lookup(self, k, ek) then
+  if lookup(_cli, k, ek) then
     error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
   end
 
-  if has_no_flag and lookup(self, nil, "no-"..ek) then
+  if has_no_flag and lookup(_cli, nil, "no-"..ek) then
     error("Duplicate option: " .. ("no-"..ek) .. ", please rename one of them.")
   end
 
@@ -147,8 +147,8 @@ function cli:__add_opt(k, expanded_key, v, label, desc, default, callback)
     callback = callback,
   }
 
-  table.insert(self.optional, entry)
-  if #label > self.maxlabel then self.maxlabel = #label end
+  table.insert(_cli.optional, entry)
+  if #label > _cli.maxlabel then _cli.maxlabel = #label end
 
 end
 
@@ -197,7 +197,7 @@ function cli:add_opt(key, desc, default, callback)
   -- set defaults
   if v == nil and type(default) ~= "boolean" then default = nil end
 
-  self:__add_opt(k, ek, v, key, desc, default, callback)
+  really_add_option(self, k, ek, v, key, desc, default, callback)
 end
 
 --- Define a flag argument (on/off). This is a convenience helper for cli.add_opt().
@@ -221,7 +221,7 @@ function cli:add_flag(key, desc, default, callback)
     error("A flag type option cannot have a value set: " .. key)
   end
 
-  self:__add_opt(k, ek, nil, key, desc, default, callback)
+  really_add_option(self, k, ek, nil, key, desc, default, callback)
 end
 
 --- Parses the arguments found in #arg and returns a table with the populated values.
@@ -302,13 +302,13 @@ function cli:parse(arguments, noprint, dump, nocleanup)
 
     if not optkey or not entry then
       local option_type = optval and "option" or "flag"
-      return cli_error("unknown/bad " .. option_type .. ": " .. opt, noprint)
+      return on_error("unknown/bad " .. option_type .. ": " .. opt, noprint)
     end
 
     table.remove(args,1)
     if optpref == "-" then
       if optval then
-        return cli_error("short option does not allow value through '=': "..opt, noprint)
+        return on_error("short option does not allow value through '=': "..opt, noprint)
       end
       if entry.flag then
         optval = true
@@ -324,7 +324,7 @@ function cli:parse(arguments, noprint, dump, nocleanup)
       if entry then
         if entry.flag then
           if optval then
-            return cli_error("flag --" .. optkey .. " does not take a value", noprint)
+            return on_error("flag --" .. optkey .. " does not take a value", noprint)
           else
             optval = not entry.has_no_flag or (optkey:sub(1,3) ~= "no-")
           end
@@ -336,7 +336,7 @@ function cli:parse(arguments, noprint, dump, nocleanup)
           end
         end
       else
-        return cli_error("unknown/bad flag: " .. opt, noprint)
+        return on_error("unknown/bad flag: " .. opt, noprint)
       end
     end
 
@@ -358,7 +358,7 @@ function cli:parse(arguments, noprint, dump, nocleanup)
 
       local status, err = entry.callback(optkey, optval, altkey, opt)
       if status == nil and err then
-        return cli_error(err, noprint)
+        return on_error(err, noprint)
       end
     end
   end
@@ -366,9 +366,9 @@ function cli:parse(arguments, noprint, dump, nocleanup)
   -- missing any required arguments, or too many?
   if #args < #self.required or #args > #self.required + self.optargument.maxcount then
     if self.optargument.maxcount > 0 then
-      return cli_error("bad number of arguments: " .. #self.required .."-" .. #self.required + self.optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
+      return on_error("bad number of arguments: " .. #self.required .."-" .. #self.required + self.optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
     else
-      return cli_error("bad number of arguments: " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
+      return on_error("bad number of arguments: " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
     end
   end
 
@@ -378,7 +378,7 @@ function cli:parse(arguments, noprint, dump, nocleanup)
     if entry.callback then
       local status, err = entry.callback(entry.key, entry.value)
       if status == nil and err then
-        return cli_error(err, noprint)
+        return on_error(err, noprint)
       end
     end
     table.remove(args, 1)
@@ -394,7 +394,7 @@ function cli:parse(arguments, noprint, dump, nocleanup)
     if self.optargument.callback then
       local status, err = self.optargument.callback(self.optargument.key, args[1])
       if status == nil and err then
-        return cli_error(err, noprint)
+        return on_error(err, noprint)
       end
     end
     table.remove(args,1)
@@ -463,7 +463,7 @@ function cli:parse(arguments, noprint, dump, nocleanup)
       end
     end
     print("\n===========================================\n\n")
-    return cli_error("commandline dump created as requested per '--__DUMP__' option", noprint)
+    return on_error("commandline dump created as requested per '--__DUMP__' option", noprint)
   end
 
   if not nocleanup then
