@@ -1,4 +1,4 @@
-local subject = require('utils/split')
+local subject = require('cliargs.utils.split')
 
 describe("utils::split", function()
   it("should work", function()

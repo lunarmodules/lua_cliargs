@@ -1,4 +1,4 @@
-local split = require('utils/split')
+local split = require('cliargs.utils.split')
 
 local function disect(key)
   -- characters allowed are a-z, A-Z, 0-9

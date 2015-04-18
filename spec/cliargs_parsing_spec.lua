@@ -54,8 +54,7 @@ end
 -- start tests
 describe("Testing cliargs library parsing commandlines", function()
   before_each(function()
-    package.loaded.cliargs = nil  -- Busted uses it, but must force to reload
-    cli = require("cliargs")
+    cli = require("cliargs.core")()
   end)
 
   it("tests no arguments set, nor provided", function()

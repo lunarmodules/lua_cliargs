@@ -1,4 +1,4 @@
-local split = require('utils/split')
+local split = require('cliargs.utils.split')
 
 local function buildline(words, size, overflow)
   -- if overflow is set, a word longer than size, will overflow the size
