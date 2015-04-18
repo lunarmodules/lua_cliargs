@@ -1,11 +1,11 @@
 -- luacheck: globals describe it before_each setup teardown, ignore dump print
 
-local cli
-
 describe("Testing cliargs library methods/functions", function()
+  local cli
+
   setup(function()
-    if cli then cli:cleanup() end
-    cli = require("cliargs")
+    -- if cli then cli:cleanup() end
+    cli = require("cliargs.core")()
   end)
 
   describe("testing private functions", function()

@@ -152,7 +152,7 @@ Changes in 2.0.0 from 1.x.x
 
 The code is released under the MIT terms. Feel free to use it in both open and closed software as you please.
 
-Copyright (c) 2011-2012 Ahmad Amireh
+Copyright (c) 2011-2015 Ahmad Amireh
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

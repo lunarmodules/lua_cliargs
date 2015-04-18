@@ -54,8 +54,7 @@ end
 -- start tests
 describe("Testing cliargs library parsing commandlines", function()
   before_each(function()
-    package.loaded.cliargs = nil  -- Busted uses it, but must force to reload
-    cli = require("cliargs")
+    cli = require("cliargs.core")()
   end)
 
   it("tests no arguments set, nor provided", function()
@@ -193,7 +192,7 @@ describe("Testing cliargs library parsing commandlines", function()
     it("should bail if the default value is not an empty table", function()
       assert.error_matches(function()
         cli:add_option("-k", "a key that can be specified multiple times", { "foo" })
-      end, "Default argument: expected a")
+      end, "Default argument: expected a string, nil, or {}")
     end)
 
     it("should print [] as the default value in the --help listing", function()
