@@ -7,12 +7,13 @@ Try this file with the following commands lines;
 
 --]]
 
-local cli = require "../src/cliargs"
+local cli = require "cliargs"
 
 local function print_version(key, value, altkey)
   -- this is called when the flag -v or --version is set
   if key == 'version' then
     print("cli_example.lua: version 1.2.1")
+    print("lua_cliargs: version " .. cli._VERSION)
     os.exit(0)
   end
 end

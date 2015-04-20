@@ -55,6 +55,41 @@ return function()
     return nil, full_msg
   end
 
+  -- Used internally to add an option
+  local function really_add_option(_cli, k, expanded_key, v, label, desc, default, callback)
+    local flag = (v == nil) -- no value, so it's a flag
+    local has_no_flag = flag and (expanded_key and expanded_key:find('^%[no%-]') ~= nil)
+    local ek = has_no_flag and expanded_key:sub(6) or expanded_key
+
+    -- guard against duplicates
+    if lookup(_cli, k, ek) then
+      error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
+    end
+
+    if has_no_flag and lookup(_cli, nil, "no-"..ek) then
+      error("Duplicate option: " .. ("no-"..ek) .. ", please rename one of them.")
+    end
+
+    -- below description of full entry record, nils included for reference
+    local entry = {
+      key = k,
+      expanded_key = ek,
+      desc = desc,
+      default = default,
+      label = label,
+      flag = flag,
+      has_no_flag = has_no_flag,
+      value = default,
+      callback = callback,
+    }
+
+    table.insert(_cli.optional, entry)
+  end
+
+  -- ------------------------------------------------------------------------ --
+  -- PUBLIC API
+  -- ------------------------------------------------------------------------ --
+
   --- Assigns the name of the program which will be used for logging.
   function cli:set_name(name)
     self.name = name
@@ -78,7 +113,7 @@ return function()
   --- ### Usage example
   --- The following will parse the argument (if specified) and set its value in `args["root"]`:
   --- `cli:add_arg("root", "path to where root scripts can be found")`
-  function cli:add_arg(key, desc, callback)
+  function cli:add_argument(key, desc, callback)
     assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
     assert(is_callable(callback) or callback == nil, "Callback argument: expected a function or nil")
 
@@ -123,37 +158,6 @@ return function()
     }
   end
 
-  -- Used internally to add an option
-  local function really_add_option(_cli, k, expanded_key, v, label, desc, default, callback)
-    local flag = (v == nil) -- no value, so it's a flag
-    local has_no_flag = flag and (expanded_key and expanded_key:find('^%[no%-]') ~= nil)
-    local ek = has_no_flag and expanded_key:sub(6) or expanded_key
-
-    -- guard against duplicates
-    if lookup(_cli, k, ek) then
-      error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
-    end
-
-    if has_no_flag and lookup(_cli, nil, "no-"..ek) then
-      error("Duplicate option: " .. ("no-"..ek) .. ", please rename one of them.")
-    end
-
-    -- below description of full entry record, nils included for reference
-    local entry = {
-      key = k,
-      expanded_key = ek,
-      desc = desc,
-      default = default,
-      label = label,
-      flag = flag,
-      has_no_flag = has_no_flag,
-      value = default,
-      callback = callback,
-    }
-
-    table.insert(_cli.optional, entry)
-  end
-
   --- Defines an option.
   --- Optional arguments can use 3 different notations, and can accept a value.
   --- *Aliases: `add_option`*
@@ -171,7 +175,7 @@ return function()
   --- ### Usage example
   --- The following option will be stored in `args["i"]` and `args["input"]` with a default value of `my_file.txt`:
   --- `cli:add_option("-i, --input=FILE", "path to the input file", "my_file.txt")`
-  function cli:add_opt(key, desc, default, callback)
+  function cli:add_option(key, desc, default, callback)
     -- parameterize the key if needed, possible variations:
     -- 1. -key
     -- 2. -key VALUE
@@ -424,51 +428,11 @@ return function()
     end
 
     if dump then
-      local maxlabel = 0
+      printer.dump_internal_state(self)
 
-      print("\n======= Provided command line =============")
-      print("\nNumber of arguments: ", #arg)
-      for i,v in ipairs(arg) do -- use gloabl 'arg' not the modified local 'args'
-        print(string.format("%3i = '%s'", i, v))
-      end
-
-      print("\n======= Parsed command line ===============")
-      if #self.required > 0 then print("\nArguments:") end
-      for _,v in ipairs(self.required) do
-        print("  " .. v.key .. string.rep(" ", maxlabel + 2 - #v.key) .. " => '" .. v.value .. "'")
-      end
-
-      if self.optargument.maxcount > 0 then
-        print("\nOptional arguments:")
-        print("  " .. self.optargument.key .. "; allowed are " .. tostring(self.optargument.maxcount) .. " arguments")
-        if self.optargument.maxcount == 1 then
-            print("  " .. self.optargument.key .. string.rep(" ", maxlabel + 2 - #self.optargument.key) .. " => '" .. self.optargument.key .. "'")
-        else
-          for i = 1, self.optargument.maxcount do
-            if self.optargument.value[i] then
-              print("  " .. tostring(i) .. string.rep(" ", maxlabel + 2 - #tostring(i)) .. " => '" .. tostring(self.optargument.value[i]) .. "'")
-            end
-          end
-        end
-      end
-
-      if #self.optional > 0 then print("\nOptional parameters:") end
-      local doubles = {}
-      for _, v in pairs(self.optional) do
-        if not doubles[v] then
-          local m = v.value
-          if type(m) == "string" then
-            m = "'"..m.."'"
-          else
-            m = tostring(m) .." (" .. type(m) .. ")"
-          end
-          print("  " .. v.label .. string.rep(" ", maxlabel + 2 - #v.label) .. " => " .. m)
-          doubles[v] = v
-        end
-      end
-      print("\n===========================================\n\n")
       return on_error("commandline dump created as requested per '--__DUMP__' option", noprint)
     end
+
 
     return results
   end
@@ -508,6 +472,8 @@ return function()
     return msg
   end
 
+  -- TODO: move to printer
+  --
   --- Sets the amount of space allocated to the argument keys and descriptions in the help listing.
   --- The sizes are used for wrapping long argument keys and descriptions.
   --- ### Parameters
@@ -516,17 +482,6 @@ return function()
   function cli:set_colsz(key_cols, desc_cols)
     self.colsz = { key_cols or self.colsz[1], desc_cols or self.colsz[2] }
   end
-
-  -- finalize setup
-  cli._COPYRIGHT   = "Copyright (C) 2011-2014 Ahmad Amireh"
-  cli._LICENSE     = "The code is released under the MIT terms. Feel free to use it in both open and closed software as you please."
-  cli._DESCRIPTION = "Commandline argument parser for Lua"
-  cli._VERSION     = "cliargs 2.5-1"
-
-  -- aliases
-  cli.add_argument = cli.add_arg
-  cli.add_option = cli.add_opt
-  cli.parse_args = cli.parse    -- backward compatibility
 
   return cli
 end

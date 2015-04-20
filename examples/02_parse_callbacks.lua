@@ -12,12 +12,10 @@ Try this file with the following commands lines;
 
 local cli = require "cliargs"
 
+-- this is called when the flag -v or --version is set
 local function print_version(key, value, altkey, opt)
-  -- this is called when the flag -v or --version is set
-  if key == 'version' then
-    print("example.lua: version 1.2.1")
-    os.exit(0)
-  end
+  print("example.lua: version 1.2.1")
+  os.exit(0)
 end
 
 cli:set_name("try_my_version.lua")
