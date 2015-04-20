@@ -7,8 +7,10 @@ local function get_max_label_length(cli)
 
   for _,table_name in ipairs({"required", "optional"}) do
     for _, entry in ipairs(cli[table_name]) do
-      if #entry.key > maxsz then
-        maxsz = #entry.key
+      local key = entry.label or entry.key
+
+      if #key > maxsz then
+        maxsz = #key
       end
     end
   end
@@ -98,7 +100,57 @@ local function generate_help(cli)
   return msg
 end
 
+local function dump_internal_state(cli)
+  local maxlabel = get_max_label_length(cli)
+  local self = cli
+
+  print("\n======= Provided command line =============")
+  print("\nNumber of arguments: ", #arg)
+
+  for i,v in ipairs(arg) do -- use gloabl 'arg' not the modified local 'args'
+    print(string.format("%3i = '%s'", i, v))
+  end
+
+  print("\n======= Parsed command line ===============")
+  if #self.required > 0 then print("\nArguments:") end
+  for _,v in ipairs(self.required) do
+    print("  " .. v.key .. string.rep(" ", maxlabel + 2 - #v.key) .. " => '" .. v.value .. "'")
+  end
+
+  if self.optargument.maxcount > 0 then
+    print("\nOptional arguments:")
+    print("  " .. self.optargument.key .. "; allowed are " .. tostring(self.optargument.maxcount) .. " arguments")
+    if self.optargument.maxcount == 1 then
+        print("  " .. self.optargument.key .. string.rep(" ", maxlabel + 2 - #self.optargument.key) .. " => '" .. self.optargument.key .. "'")
+    else
+      for i = 1, self.optargument.maxcount do
+        if self.optargument.value[i] then
+          print("  " .. tostring(i) .. string.rep(" ", maxlabel + 2 - #tostring(i)) .. " => '" .. tostring(self.optargument.value[i]) .. "'")
+        end
+      end
+    end
+  end
+
+  if #self.optional > 0 then print("\nOptional parameters:") end
+  local doubles = {}
+  for _, v in pairs(self.optional) do
+    if not doubles[v] then
+      local m = v.value
+      if type(m) == "string" then
+        m = "'"..m.."'"
+      else
+        m = tostring(m) .." (" .. type(m) .. ")"
+      end
+      print("  " .. v.label .. string.rep(" ", maxlabel + 2 - #v.label) .. " => " .. m)
+      doubles[v] = v
+    end
+  end
+
+  print("\n===========================================\n\n")
+end
+
 return {
   generate_usage = generate_usage,
-  generate_help = generate_help
+  generate_help = generate_help,
+  dump_internal_state = dump_internal_state
 }

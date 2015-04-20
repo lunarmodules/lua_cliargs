@@ -23,7 +23,7 @@ cli:add_option("-i URLs...", "A url to download. You can pass in as many as need
 cli:add_option("-j THREADS", "Concurrency threshold; the higher the number, the more files will be downloaded in parallel.", "2")
 
 -- Parses from _G['arg']
-local args = cli:parse_args()
+local args = cli:parse()
 
 if not args then
   os.exit(1) -- something wrong happened and an error was printed
