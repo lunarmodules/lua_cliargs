@@ -100,7 +100,7 @@ local function callable(fn)
 end
 
 
-function cli_error(msg, noprint)
+local function cli_error(msg, noprint)
   local msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
   if not noprint then print(msg) end
   return nil, msg
