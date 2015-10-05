@@ -5,13 +5,10 @@ local deprecated = require('cliargs.utils.deprecated')
 -- discarded after use.
 function cli.cleanup()
   for k, v in pairs(package.loaded) do
-
-    if (v == cli) or (k:match('cliargs')) then
+    if v == cli or k:match('cliargs') then
       package.loaded[k] = nil
-      break
     end
   end
-
   cli = nil
 end
 
