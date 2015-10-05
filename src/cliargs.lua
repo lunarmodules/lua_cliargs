@@ -1,5 +1,8 @@
-local cli = require('cliargs.core')()
+local core = require('cliargs.core')()
 local deprecated = require('cliargs.utils.deprecated')
+local unpack = unpack or table.unpack
+
+local cli = setmetatable({},{ __index = core })
 
 -- Clean up the entire module (unload the scripts) as it's expected to be
 -- discarded after use.
@@ -23,16 +26,12 @@ deprecated('add_arg', 'add_argument', cli)
 deprecated('add_opt', 'add_option', cli)
 deprecated('parse_args', 'parse', cli)
 
--- TODO: how to shadow cli:parse() ?
--- local parse = cli.parse
--- function cli:parse(arguments, noprint, dump, nocleanup)
---   local out = parse(arguments, noprint, dump)
-
---   if not nocleanup then
---     cli.cleanup()
---   end
-
---   return out
--- end
+function cli:parse(arguments, noprint, dump, nocleanup)
+  local out = { core.parse(self, arguments, noprint, dump) }
+  if not nocleanup then
+    cli.cleanup()
+  end
+  return unpack(out)
+end
 
 return cli
