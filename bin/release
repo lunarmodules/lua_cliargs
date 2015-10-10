@@ -70,6 +70,7 @@ git add $NEW_ROCKSPEC
 git rm  $OLD_ROCKSPEC
 git add $SRC_FILE
 git commit -m "Release v${VERSION}"
+git push origin master
 
 echo "Done."
 confirm "Create a new GitHub release?"
