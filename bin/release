@@ -17,9 +17,10 @@ function confirm {
   fi
 }
 
-[ -z "${GITHUB_TOKEN}"  ] && abort "Missing GITHUB_TOKEN env variable."
-[ -z "${GITHUB_USER}"   ] && abort "Missing GITHUB_USER env variable."
-[ -z "${GITHUB_REPO}"   ] && abort "Missing GITHUB_REPO env variable."
+[ -z "${GITHUB_TOKEN}"      ] && abort "Missing GITHUB_TOKEN env variable."
+[ -z "${GITHUB_USER}"       ] && abort "Missing GITHUB_USER env variable."
+[ -z "${GITHUB_REPO}"       ] && abort "Missing GITHUB_REPO env variable."
+[ -z "${LUAROCKS_API_KEY}"  ] && abort "Missing LUAROCKS_API_KEY env variable."
 
 VERSION=$1
 SRC_FILE="src/cliargs.lua"
@@ -85,6 +86,6 @@ echo "Done."
 
 confirm "Publish to luarocks?"
 
-luarocks upload $NEW_ROCKSPEC
+luarocks --api-key=$LUAROCKS_API_KEY upload $NEW_ROCKSPEC
 
 echo -e "\e[00;32m[ SUCCESS ]\e[00m"
