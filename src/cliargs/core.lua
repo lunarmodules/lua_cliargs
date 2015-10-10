@@ -36,7 +36,8 @@ end
 -- CLI Main --
 -- -------- --
 return function()
-  local cli = {
+  local cli = {}
+  local data = {
     name = "",
     description = "",
     required = {},
@@ -46,7 +47,7 @@ return function()
   }
 
   local function on_error(msg, noprint)
-    local full_msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
+    local full_msg = data.name .. ": error: " .. msg .. '; re-run with --help for usage.'
 
     if not noprint then
       print(full_msg)
@@ -92,12 +93,12 @@ return function()
 
   --- Assigns the name of the program which will be used for logging.
   function cli:set_name(name)
-    self.name = name
+    data.name = name
   end
 
   --- Write down a brief, 1-liner description of what the program does.
   function cli:set_description(description)
-    self.description = description
+    data.description = description
   end
 
   --- Defines a required argument.
@@ -117,11 +118,11 @@ return function()
     assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
     assert(is_callable(callback) or callback == nil, "Callback argument: expected a function or nil")
 
-    if lookup(self, key, nil, self.required) then
+    if lookup(data, key, nil, data.required) then
       error("Duplicate argument: " .. key .. ", please rename one of them.")
     end
 
-    table.insert(self.required, { key = key, desc = desc, value = nil, callback = callback })
+    table.insert(data.required, { key = key, desc = desc, value = nil, callback = callback })
   end
 
   --- Defines an optional argument (or more than one).
@@ -148,7 +149,7 @@ return function()
     assert(maxcount and maxcount>0 and maxcount<1000,"Maxcount must be a number from 1 to 999")
     assert(is_callable(callback) or callback == nil, "Callback argument: expected a function or nil")
 
-    self.optargument = {
+    data.optargument = {
       key = key,
       desc = desc,
       default = default,
@@ -203,7 +204,7 @@ return function()
     -- set defaults
     if v == nil and type(default) ~= "boolean" then default = nil end
 
-    really_add_option(self, k, ek, v, key, desc, default, callback)
+    really_add_option(data, k, ek, v, key, desc, default, callback)
   end
 
   --- Define a flag argument (on/off). This is a convenience helper for cli.add_opt().
@@ -227,11 +228,11 @@ return function()
       error("A flag type option cannot have a value set: " .. key)
     end
 
-    really_add_option(self, k, ek, nil, key, desc, default, callback)
+    really_add_option(data, k, ek, nil, key, desc, default, callback)
   end
 
   --- Parses the arguments found in #arg and returns a table with the populated values.
-  --- (NOTE: after succesful parsing, the module will delete itself to free resources)
+  --- (NOTE: after succesful parsing, the module will delete itdata to free resources)
   --- *Aliases: `parse_args`*
   ---
   --- ### Parameters
@@ -261,7 +262,7 @@ return function()
 
     -- starts with --help? display the help listing and abort!
     if args[1] and (args[1] == "--help" or args[1] == "-h") then
-      return nil, self:print_help(noprint)
+      return nil, data:print_help(noprint)
     end
 
     -- starts with --__DUMP__; set dump to true to dump the parsed arguments
@@ -300,7 +301,7 @@ return function()
 
       if optkey then
         entry = lookup(
-          self,
+          data,
           optpref == '-' and optkey or nil,
           optpref == '--' and optkey or nil
         )
@@ -325,7 +326,7 @@ return function()
         end
       elseif optpref == "--" then
         -- using the expanded-key notation
-        entry = lookup(self, nil, optkey)
+        entry = lookup(data, nil, optkey)
 
         if entry then
           if entry.flag then
@@ -370,16 +371,16 @@ return function()
     end
 
     -- missing any required arguments, or too many?
-    if #args < #self.required or #args > #self.required + self.optargument.maxcount then
-      if self.optargument.maxcount > 0 then
-        return on_error("bad number of arguments: " .. #self.required .."-" .. #self.required + self.optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
+    if #args < #data.required or #args > #data.required + data.optargument.maxcount then
+      if data.optargument.maxcount > 0 then
+        return on_error("bad number of arguments: " .. #data.required .."-" .. #data.required + data.optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
       else
-        return on_error("bad number of arguments: " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
+        return on_error("bad number of arguments: " .. #data.required .. " argument(s) must be specified, not " .. #args, noprint)
       end
     end
 
     -- deal with required args here
-    for _, entry in ipairs(self.required) do
+    for _, entry in ipairs(data.required) do
       entry.value = args[1]
       if entry.callback then
         local status, err = entry.callback(entry.key, entry.value)
@@ -391,14 +392,14 @@ return function()
     end
     -- deal with the last optional argument
     while args[1] do
-      if self.optargument.maxcount > 1 then
-        self.optargument.value = self.optargument.value or {}
-        table.insert(self.optargument.value, args[1])
+      if data.optargument.maxcount > 1 then
+        data.optargument.value = data.optargument.value or {}
+        table.insert(data.optargument.value, args[1])
       else
-        self.optargument.value = args[1]
+        data.optargument.value = args[1]
       end
-      if self.optargument.callback then
-        local status, err = self.optargument.callback(self.optargument.key, args[1])
+      if data.optargument.callback then
+        local status, err = data.optargument.callback(data.optargument.key, args[1])
         if status == nil and err then
           return on_error(err, noprint)
         end
@@ -406,29 +407,29 @@ return function()
       table.remove(args,1)
     end
     -- if necessary set the defaults for the last optional argument here
-    if self.optargument.maxcount > 0 and not self.optargument.value then
-      if self.optargument.maxcount == 1 then
-        self.optargument.value = self.optargument.default
+    if data.optargument.maxcount > 0 and not data.optargument.value then
+      if data.optargument.maxcount == 1 then
+        data.optargument.value = data.optargument.default
       else
-        self.optargument.value = { self.optargument.default }
+        data.optargument.value = { data.optargument.default }
       end
     end
 
     -- populate the results table
     local results = {}
-    if self.optargument.maxcount > 0 then
-      results[self.optargument.key] = self.optargument.value
+    if data.optargument.maxcount > 0 then
+      results[data.optargument.key] = data.optargument.value
     end
-    for _, entry in pairs(self.required) do
+    for _, entry in pairs(data.required) do
       results[entry.key] = entry.value
     end
-    for _, entry in pairs(self.optional) do
+    for _, entry in pairs(data.optional) do
       if entry.key then results[entry.key] = entry.value end
       if entry.expanded_key then results[entry.expanded_key] = entry.value end
     end
 
     if dump then
-      printer.dump_internal_state(self)
+      printer.dump_internal_state(data)
 
       return on_error("commandline dump created as requested per '--__DUMP__' option", noprint)
     end
@@ -446,7 +447,7 @@ return function()
   --- ### Returns
   --- 1. a string with the USAGE message.
   function cli:print_usage(noprint)
-    local msg = printer.generate_usage(self)
+    local msg = printer.generate_usage(data)
 
     if not noprint then
       print(msg)
@@ -463,7 +464,7 @@ return function()
   --- ### Returns
   --- 1. a string with the HELP message.
   function cli:print_help(noprint)
-    local msg = printer.generate_help(self)
+    local msg = printer.generate_help(data)
 
     if not noprint then
       print(msg)
@@ -480,7 +481,7 @@ return function()
   --- 1. **key_cols**: the number of columns assigned to the argument keys, set to 0 to auto detect (default: 0)
   --- 1. **desc_cols**: the number of columns assigned to the argument descriptions, set to 0 to auto set the total width to 72 (default: 0)
   function cli:set_colsz(key_cols, desc_cols)
-    self.colsz = { key_cols or self.colsz[1], desc_cols or self.colsz[2] }
+    data.colsz = { key_cols or data.colsz[1], desc_cols or data.colsz[2] }
   end
 
   return cli
