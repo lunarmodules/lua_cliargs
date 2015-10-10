@@ -12,8 +12,8 @@ local function is_callable(fn)
 end
 
 -- Used internally to lookup an entry using either its short or expanded keys
-local function lookup(_cli, k, ek, argtable)
-  local t = argtable or _cli.optional
+local function lookup(k, ek, argtable)
+  local t = argtable
 
   for _,entry in ipairs(t) do
     if k  and entry.key == k then
@@ -36,16 +36,34 @@ end
 -- CLI Main --
 -- -------- --
 return function()
+  local required = {}
+  local optional = {}
+  local optargument = {maxcount = 0}
+  local colsz = { 0, 0 } -- column width, help text. Set to 0 for auto detect
+
   local cli = {
     name = "",
     description = "",
-    required = {},
-    optional = {},
-    optargument = {maxcount = 0},
-    colsz = { 0, 0 }, -- column width, help text. Set to 0 for auto detect
+
+    --- @property {function} on_error
+    ---
+    --- A function to call when a parsing error has occured (at run-time).
+    ---
+    --- @param {string} msg
+    ---        The error message.
+    ---
+    --- @param {bool} noprint
+    ---        Whether the client has requested not to print anything to
+    ---        STDOUT. You should probably respect this if you define this
+    ---        handler.
+    on_error = nil
   }
 
   local function on_error(msg, noprint)
+    if cli.on_error then
+      return cli.on_error(msg)
+    end
+
     local full_msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
 
     if not noprint then
@@ -56,17 +74,17 @@ return function()
   end
 
   -- Used internally to add an option
-  local function really_add_option(_cli, k, expanded_key, v, label, desc, default, callback)
+  local function really_add_option(k, expanded_key, v, label, desc, default, callback)
     local flag = (v == nil) -- no value, so it's a flag
     local has_no_flag = flag and (expanded_key and expanded_key:find('^%[no%-]') ~= nil)
     local ek = has_no_flag and expanded_key:sub(6) or expanded_key
 
     -- guard against duplicates
-    if lookup(_cli, k, ek) then
+    if lookup(k, ek, optional) then
       error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
     end
 
-    if has_no_flag and lookup(_cli, nil, "no-"..ek) then
+    if has_no_flag and lookup(nil, "no-"..ek, optional) then
       error("Duplicate option: " .. ("no-"..ek) .. ", please rename one of them.")
     end
 
@@ -81,9 +99,19 @@ return function()
       has_no_flag = has_no_flag,
       value = default,
       callback = callback,
+
+      __display_key = ek or k
     }
 
-    table.insert(_cli.optional, entry)
+    table.insert(optional, entry)
+  end
+
+  local function get_parser_state()
+    return {
+      required = required,
+      optional = optional,
+      optargument = optargument
+    }
   end
 
   -- ------------------------------------------------------------------------ --
@@ -128,14 +156,14 @@ return function()
     )
 
     assert(callback == nil or is_callable(callback),
-      "Callback argument: expected a function or nil"
+      "Callback argument must be a function"
     )
 
-    if lookup(self, key, nil, self.required) then
+    if lookup(key, nil, required) then
       error("Duplicate argument: " .. key .. ", please rename one of them.")
     end
 
-    table.insert(self.required, {
+    table.insert(required, {
       key = key,
       desc = desc,
       value = nil,
@@ -160,14 +188,29 @@ return function()
   --- `cli:add_arg("root", "path to where root scripts can be found", "", 2)`
   --- The value returned will be a table with at least 1 entry and a maximum of 2 entries
   function cli:optarg(key, desc, default, maxcount, callback)
-    assert(type(key) == "string" and type(desc) == "string", "Key and description are mandatory arguments (Strings)")
-    assert(type(default) == "string" or default == nil, "Default value must either be omitted or be a string")
-    maxcount = maxcount or 1
-    maxcount = tonumber(maxcount)
-    assert(maxcount and maxcount>0 and maxcount<1000,"Maxcount must be a number from 1 to 999")
-    assert(is_callable(callback) or callback == nil, "Callback argument: expected a function or nil")
+    assert(optargument.key == nil,
+      "Only one splat argument may be defined."
+    )
 
-    self.optargument = {
+    assert(type(key) == "string" and type(desc) == "string",
+      "Key and description are mandatory arguments (Strings)"
+    )
+
+    assert(type(default) == "string" or default == nil,
+      "Default value must either be omitted or be a string"
+    )
+
+    maxcount = tonumber(maxcount or 1)
+
+    assert(maxcount and maxcount > 0 and maxcount < 1000,
+      "Maxcount must be a number from 1 to 999"
+    )
+
+    assert(is_callable(callback) or callback == nil,
+      "Callback argument: expected a function or nil"
+    )
+
+    optargument = {
       key = key,
       desc = desc,
       default = default,
@@ -210,16 +253,6 @@ return function()
   ---
   ---     cli:option("-i, --input=FILE", "path to the input file", "file.txt")
   function cli:add_option(key, desc, default, callback)
-    -- parameterize the key if needed, possible variations:
-    -- 1. -key
-    -- 2. -key VALUE
-    -- 3. -key, --expanded
-    -- 4. -key, --expanded=VALUE
-    -- 5. -key --expanded
-    -- 6. -key --expanded=VALUE
-    -- 7. --expanded
-    -- 8. --expanded=VALUE
-
     assert(type(key) == "string" and type(desc) == "string",
       "Key and description are mandatory arguments (Strings)"
     )
@@ -229,23 +262,22 @@ return function()
     )
 
     assert(
-      (
-        type(default) == "string"
-        or default == nil
-        or type(default) == "boolean"
-        or (type(default) == "table" and next(default) == nil)
-      ),
-      "Default argument: expected a string, nil, or {}"
+      type(default) == "string"
+      or type(default) == "number"
+      or default == nil
+      or type(default) == "boolean"
+      or (type(default) == "table" and next(default) == nil)
+      ,
+      "Default argument: expected a string, a number, nil, or {}"
     )
 
     local k, ek, v = disect(key)
 
-    -- set defaults
-    if v == nil and type(default) ~= "boolean" then
-      default = nil
+    if v == nil then
+      return self:add_flag(key, desc, default, callback)
     end
 
-    really_add_option(self, k, ek, v, key, desc, default, callback)
+    really_add_option(k, ek, v, key, desc, default, callback)
   end
 
   --- Define a flag argument (on/off). This is a convenience helper for cli.add_opt().
@@ -261,7 +293,14 @@ return function()
       callback = default
       default = nil
     end
-    assert(default == nil or type(default) == "boolean", "Default argument: expected a boolean, nil")
+
+    assert(type(key) == "string" and type(desc) == "string",
+      "Key and description are mandatory arguments (Strings)"
+    )
+
+    assert(default == nil or type(default) == "boolean",
+      "Default argument: expected a boolean or nil"
+    )
 
     local k, ek, v = disect(key)
 
@@ -269,7 +308,7 @@ return function()
       error("A flag type option cannot have a value set: " .. key)
     end
 
-    really_add_option(self, k, ek, nil, key, desc, default, callback)
+    really_add_option(k, ek, nil, key, desc, default, callback)
   end
 
   --- Parses the arguments found in #arg and returns a table with the populated values.
@@ -318,7 +357,9 @@ return function()
       local entry = nil
       local opt = args[1]
       local optpref, optkey, optkey2, optval
+      local flag_negated = false
       _, _, optpref, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
+
       if optkey then
         _, _, optkey2, optval = optkey:find("(.-)[=](.+)")       -- split value and key
         if optval then
@@ -340,41 +381,49 @@ return function()
         optkey = optkey:sub(1,-2)
       end
 
+      if optkey:sub(1,3) == "no-" then
+        optkey = optkey:sub(4,-1)
+        flag_negated = true
+      end
+
       if optkey then
         entry = lookup(
-          self,
           optpref == '-' and optkey or nil,
-          optpref == '--' and optkey or nil
+          optpref == '--' and optkey or nil,
+          optional
         )
       end
 
       if not optkey or not entry then
         local option_type = optval and "option" or "flag"
+
         return on_error("unknown/bad " .. option_type .. ": " .. opt, noprint)
       end
 
-      table.remove(args,1)
+      if flag_negated and not entry.has_no_flag then
+        return on_error("flag '" .. entry.__display_key .. "' may not be negated using --no-")
+      end
+
+      table.remove(args, 1)
+
       if optpref == "-" then
-        if optval then
-          return on_error("short option does not allow value through '=': "..opt, noprint)
-        end
         if entry.flag then
-          optval = true
-        else
+          optval = not flag_negated
+        elseif not optval then
           -- not a flag, value is in the next argument
           optval = args[1]
           table.remove(args, 1)
         end
       elseif optpref == "--" then
         -- using the expanded-key notation
-        entry = lookup(self, nil, optkey)
+        entry = lookup(nil, optkey, optional)
 
         if entry then
           if entry.flag then
             if optval then
               return on_error("flag --" .. optkey .. " does not take a value", noprint)
             else
-              optval = not entry.has_no_flag or (optkey:sub(1,3) ~= "no-")
+              optval = not flag_negated
             end
           else
             if not optval then
@@ -412,16 +461,16 @@ return function()
     end
 
     -- missing any required arguments, or too many?
-    if #args < #self.required or #args > #self.required + self.optargument.maxcount then
-      if self.optargument.maxcount > 0 then
-        return on_error("bad number of arguments: " .. #self.required .."-" .. #self.required + self.optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
+    if #args < #required or #args > #required + optargument.maxcount then
+      if optargument.maxcount > 0 then
+        return on_error("bad number of arguments: " .. #required .."-" .. #required + optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
       else
-        return on_error("bad number of arguments: " .. #self.required .. " argument(s) must be specified, not " .. #args, noprint)
+        return on_error("bad number of arguments: " .. #required .. " argument(s) must be specified, not " .. #args, noprint)
       end
     end
 
     -- deal with required args here
-    for _, entry in ipairs(self.required) do
+    for _, entry in ipairs(required) do
       entry.value = args[1]
       if entry.callback then
         local status, err = entry.callback(entry.key, entry.value)
@@ -433,14 +482,14 @@ return function()
     end
     -- deal with the last optional argument
     while args[1] do
-      if self.optargument.maxcount > 1 then
-        self.optargument.value = self.optargument.value or {}
-        table.insert(self.optargument.value, args[1])
+      if optargument.maxcount > 1 then
+        optargument.value = optargument.value or {}
+        table.insert(optargument.value, args[1])
       else
-        self.optargument.value = args[1]
+        optargument.value = args[1]
       end
-      if self.optargument.callback then
-        local status, err = self.optargument.callback(self.optargument.key, args[1])
+      if optargument.callback then
+        local status, err = optargument.callback(optargument.key, args[1])
         if status == nil and err then
           return on_error(err, noprint)
         end
@@ -448,29 +497,29 @@ return function()
       table.remove(args,1)
     end
     -- if necessary set the defaults for the last optional argument here
-    if self.optargument.maxcount > 0 and not self.optargument.value then
-      if self.optargument.maxcount == 1 then
-        self.optargument.value = self.optargument.default
+    if optargument.maxcount > 0 and not optargument.value then
+      if optargument.maxcount == 1 then
+        optargument.value = optargument.default
       else
-        self.optargument.value = { self.optargument.default }
+        optargument.value = { optargument.default }
       end
     end
 
     -- populate the results table
     local results = {}
-    if self.optargument.maxcount > 0 then
-      results[self.optargument.key] = self.optargument.value
+    if optargument.maxcount > 0 then
+      results[optargument.key] = optargument.value
     end
-    for _, entry in pairs(self.required) do
+    for _, entry in pairs(required) do
       results[entry.key] = entry.value
     end
-    for _, entry in pairs(self.optional) do
+    for _, entry in pairs(optional) do
       if entry.key then results[entry.key] = entry.value end
       if entry.expanded_key then results[entry.expanded_key] = entry.value end
     end
 
     if dump then
-      printer.dump_internal_state(self)
+      printer.dump_internal_state(get_parser_state())
 
       return on_error("commandline dump created as requested per '--__DUMP__' option", noprint)
     end
@@ -488,7 +537,7 @@ return function()
   --- ### Returns
   --- 1. a string with the USAGE message.
   function cli:print_usage(noprint)
-    local msg = printer.generate_usage(self)
+    local msg = printer.generate_usage(get_parser_state())
 
     if not noprint then
       print(msg)
@@ -505,9 +554,9 @@ return function()
   --- ### Returns
   --- 1. a string with the HELP message.
   function cli:print_help(noprint)
-    local msg = printer.generate_help(self)
+    local msg = printer.generate_help(get_parser_state(), colsz)
 
-    if not noprint then
+    if not noprint == true then
       print(msg)
     end
 
@@ -521,8 +570,8 @@ return function()
   --- ### Parameters
   --- 1. **key_cols**: the number of columns assigned to the argument keys, set to 0 to auto detect (default: 0)
   --- 1. **desc_cols**: the number of columns assigned to the argument descriptions, set to 0 to auto set the total width to 72 (default: 0)
-  function cli:set_colsz(key_cols, desc_cols)
-    self.colsz = { key_cols or self.colsz[1], desc_cols or self.colsz[2] }
+  function cli.set_colsz(key_cols, desc_cols)
+    colsz = { key_cols or colsz[1], desc_cols or colsz[2] }
   end
 
   return cli

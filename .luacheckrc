@@ -1,5 +1,6 @@
 std = "min"
-cache = true
+cache = false
 
-files["spec/"].globals = { "describe", "it" }
-globals = { "describe" }
+files["spec"] = {
+  std = "+busted"
+}

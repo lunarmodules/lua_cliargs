@@ -2,11 +2,11 @@ local wordwrap = require('cliargs.utils.wordwrap')
 local MAX_COLS = 72
 local _
 
-local function get_max_label_length(cli)
+local function get_max_label_length(state)
   local maxsz = 0
 
   for _,table_name in ipairs({"required", "optional"}) do
-    for _, entry in ipairs(cli[table_name]) do
+    for _, entry in ipairs(state[table_name]) do
       local key = entry.label or entry.key
 
       if #key > maxsz then
@@ -19,38 +19,38 @@ local function get_max_label_length(cli)
 end
 
 -- Generate the USAGE heading message.
-local function generate_usage(cli)
-  local msg = "Usage: " .. tostring(cli.name)
+local function generate_usage(state)
+  local msg = "Usage: " .. tostring(state.name)
 
-  if #cli.optional > 0 then
+  if #state.optional > 0 then
     msg = msg .. " [OPTIONS]"
   end
-  if #cli.required > 0 or cli.optargument.maxcount > 0 then
+  if #state.required > 0 or state.optargument.maxcount > 0 then
     msg = msg .. " [--]"
   end
-  if #cli.required > 0 then
-    for _,entry in ipairs(cli.required) do
+  if #state.required > 0 then
+    for _,entry in ipairs(state.required) do
       msg = msg .. " " .. entry.key
     end
   end
-  if cli.optargument.maxcount == 1 then
-    msg = msg .. " [" .. cli.optargument.key .. "]"
-  elseif cli.optargument.maxcount == 2 then
-    msg = msg .. " [" .. cli.optargument.key .. "-1 [" .. cli.optargument.key .. "-2]]"
-  elseif cli.optargument.maxcount > 2 then
-    msg = msg .. " [" .. cli.optargument.key .. "-1 [" .. cli.optargument.key .. "-2 [...]]]"
+  if state.optargument.maxcount == 1 then
+    msg = msg .. " [" .. state.optargument.key .. "]"
+  elseif state.optargument.maxcount == 2 then
+    msg = msg .. " [" .. state.optargument.key .. "-1 [" .. state.optargument.key .. "-2]]"
+  elseif state.optargument.maxcount > 2 then
+    msg = msg .. " [" .. state.optargument.key .. "-1 [" .. state.optargument.key .. "-2 [...]]]"
   end
 
   return msg
 end
 
-local function generate_help(cli)
-  local msg = generate_usage(cli) .. "\n"
-  local col1 = cli.colsz[1]
-  local col2 = cli.colsz[2]
+local function generate_help(state, colsz)
+  local msg = generate_usage(state) .. "\n"
+  local col1 = colsz[1]
+  local col2 = colsz[2]
 
   if col1 == 0 then
-    col1 = get_max_label_length(cli)
+    col1 = get_max_label_length(state)
   end
 
   -- add margins
@@ -70,21 +70,21 @@ local function generate_help(cli)
       msg = msg .. label .. desc .. "\n"
   end
 
-  if cli.required[1] then
+  if state.required[1] then
     msg = msg .. "\nARGUMENTS: \n"
-    for _,entry in ipairs(cli.required) do
+    for _,entry in ipairs(state.required) do
       append(entry.key, entry.desc .. " (required)")
     end
   end
 
-  if cli.optargument.maxcount > 0 then
-    append(cli.optargument.key, cli.optargument.desc .. " (optional, default: " .. cli.optargument.default .. ")")
+  if state.optargument.maxcount > 0 then
+    append(state.optargument.key, state.optargument.desc .. " (optional, default: " .. state.optargument.default .. ")")
   end
 
-  if #cli.optional > 0 then
+  if #state.optional > 0 then
     msg = msg .. "\nOPTIONS: \n"
 
-    for _,entry in ipairs(cli.optional) do
+    for _,entry in ipairs(state.optional) do
       local desc = entry.desc
       if not entry.flag and entry.default and #tostring(entry.default) > 0 then
         local readable_default = type(entry.default) == "table" and "[]" or tostring(entry.default)
@@ -100,9 +100,8 @@ local function generate_help(cli)
   return msg
 end
 
-local function dump_internal_state(cli)
-  local maxlabel = get_max_label_length(cli)
-  local self = cli
+local function dump_internal_state(state)
+  local maxlabel = get_max_label_length(state)
 
   print("\n======= Provided command line =============")
   print("\nNumber of arguments: ", #arg)
@@ -112,28 +111,46 @@ local function dump_internal_state(cli)
   end
 
   print("\n======= Parsed command line ===============")
-  if #self.required > 0 then print("\nArguments:") end
-  for _,v in ipairs(self.required) do
+  if #state.required > 0 then print("\nArguments:") end
+  for _,v in ipairs(state.required) do
     print("  " .. v.key .. string.rep(" ", maxlabel + 2 - #v.key) .. " => '" .. v.value .. "'")
   end
 
-  if self.optargument.maxcount > 0 then
-    print("\nOptional arguments:")
-    print("  " .. self.optargument.key .. "; allowed are " .. tostring(self.optargument.maxcount) .. " arguments")
-    if self.optargument.maxcount == 1 then
-        print("  " .. self.optargument.key .. string.rep(" ", maxlabel + 2 - #self.optargument.key) .. " => '" .. self.optargument.key .. "'")
+  if state.optargument.maxcount > 0 then
+    print(
+      "\nOptional arguments:" ..
+      state.optargument.key ..
+      "; allowed are " ..
+      tostring(state.optargument.maxcount) ..
+      " arguments"
+    )
+
+    if state.optargument.maxcount == 1 then
+        print(
+          "  " .. state.optargument.key ..
+          string.rep(" ", maxlabel + 2 - #state.optargument.key) ..
+          " => '" ..
+          state.optargument.key ..
+          "'"
+        )
     else
-      for i = 1, self.optargument.maxcount do
-        if self.optargument.value[i] then
-          print("  " .. tostring(i) .. string.rep(" ", maxlabel + 2 - #tostring(i)) .. " => '" .. tostring(self.optargument.value[i]) .. "'")
+      for i = 1, state.optargument.maxcount do
+        if state.optargument.value[i] then
+          print(
+            "  " .. tostring(i) ..
+            string.rep(" ", maxlabel + 2 - #tostring(i)) ..
+            " => '" ..
+            tostring(state.optargument.value[i]) ..
+            "'"
+          )
         end
       end
     end
   end
 
-  if #self.optional > 0 then print("\nOptional parameters:") end
+  if #state.optional > 0 then print("\nOptional parameters:") end
   local doubles = {}
-  for _, v in pairs(self.optional) do
+  for _, v in pairs(state.optional) do
     if not doubles[v] then
       local m = v.value
       if type(m) == "string" then
