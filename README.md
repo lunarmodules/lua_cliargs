@@ -16,7 +16,7 @@ Optional arguments can have default values (strings), flags always default to 't
 See `example.lua` for an example on how to use the parser.
 Try it with the following sample command lines;
 
-```bash
+```
 example.lua --help
 example.lua -o myfile -d --compress=gzip inputfile
 example.lua --__DUMP__ -o myfile -d --compress=gzip inputfile
@@ -34,7 +34,7 @@ A help listing will be automatically generated and accessed using the `--help` a
 
 This is the result for our example (see examples/00_general.lua):
 
-```bash
+```
 Usage: cli_example.lua [OPTIONS]  INPUT  [OUTPUT-1 [OUTPUT-2 [...]]]
 
 ARGUMENTS:
@@ -59,21 +59,21 @@ From a parsing point of view, there are 3 cases that need to be handled which ar
 
 **Missing a required argument**
 
-```bash
+```
 $ lua examples/00_general.lua
 cli_example.lua: error: bad number of arguments; 1-4 argument(s) must be specified, not 0; re-run with --help for usage.
 ```
 
 **Missing value for an optional argument**
 
-```bash
+```
 $ lua examples/00_general.lua --compress inputfile
 cli_example.lua: error: option --compress requires a value to be set; re-run with --help for usage.
 ```
 
 **Unknown arguments**
 
-```bash
+```
 $ lua examples/00_general.lua -f inputfile
 cli_example.lua: error: unknown/bad flag; -f; re-run with --help for usage.
 ```
@@ -89,7 +89,7 @@ In the following cases, `cliargs` will report an error to you and terminate the 
 
 Running test specs is done using [busted](http://olivinelabs.com/busted/). You can install it using [LuaRocks](http://www.luarocks.org/), and then just call it with the `spec` folder:
 
-```bash
+```
 luarocks install busted
 cd /path/to/lua_cliargs/
 busted spec
@@ -98,16 +98,6 @@ busted spec
 ## Contributions
 
 If you come across a bug and you'd like to patch it, please fork the repository, commit your patch, and request a pull.
-
-**For collaborators**
-
-To deploy a new version, you must bump the rockspec and do a few things:
-
-1. rename the rockspec to reflect the new version (by incrementing the minor version, for example)
-1. edit the rockspec to point to the tarball that contains the new version (which also must follow the same naming convention)
-1. bump the version stored in the variable `cli._VERSION` in the bottom of the script `src/cliargs.lua`
-1. create the tarball using the helper bash script `tarballs/create_tarball.sh`: invoke it with two parameters: the MAJOR version and the MINOR one, ie: `./create_tarball.sh 1 4` to create a 1.4 versioned tarball of the repository
-1. add the new tarball to the Downloads of the repository so Luarocks can find it
 
 ## Thanks to
 
@@ -125,6 +115,10 @@ Many thanks to everyone who reported bugs, provided fixes, and added entirely ne
 A function reference was generated using [LunaDoc](http://jgm.github.com/lunamark/lunadoc.1.html) which can be found [here](http://lua-cliargs.docs.mxvt.net).
 
 ## Changelog
+
+Changes from 2.5.1 to 2.5.2
+
+- No longer tracking the (legacy) tarballs in git or the luarocks package. Instead, we use the GitHub release tarballs for each version.
 
 Changes in 2.4.0 from 2.3-4
 
