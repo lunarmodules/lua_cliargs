@@ -10,9 +10,30 @@ local disect = require('cliargs.utils.disect')
 local lookup = require('cliargs.utils.lookup')
 local shallow_copy = require('cliargs.utils.shallow_copy')
 local printer = require('cliargs.printer')
+local signals = require('cliargs.signals')
 
 local function is_callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
+end
+
+local function validate_default_for_option(key, default)
+  assert(
+    type(default) == "string"
+    or type(default) == "number"
+    or default == nil
+    or type(default) == "boolean"
+    or (type(default) == "table" and next(default) == nil)
+    ,
+    "Default argument for '" .. key ..
+    "' expected a string, a number, nil, or {}, got " .. type(default)
+  )
+end
+
+local function validate_default_for_flag(key, default)
+  assert(default == nil or type(default) == "boolean",
+    "Default argument for '" .. key ..
+    "' expected a boolean or nil, got " .. type(default)
+  )
 end
 
 -- -------- --
@@ -35,11 +56,6 @@ return function()
   ---
   --- @param {string} msg
   ---        The error message.
-  ---
-  --- @param {bool} noprint
-  ---        Whether the client has requested not to print anything to
-  ---        STDOUT. You should probably respect this if you define this
-  ---        handler.
   local custom_error_handler = nil
 
   local function on_error(msg)
@@ -158,6 +174,12 @@ return function()
     local entry = lookup(key, key, optional)
 
     assert(entry, "Unrecognized option with the key '" .. key .. "'")
+
+    if entry.flag then
+      validate_default_for_flag(key, new_default)
+    else
+      validate_default_for_option(key, new_default)
+    end
 
     entry.default = new_default
   end
@@ -293,21 +315,17 @@ return function()
       "Callback argument: expected a function or nil"
     )
 
-    assert(
-      type(default) == "string"
-      or type(default) == "number"
-      or default == nil
-      or type(default) == "boolean"
-      or (type(default) == "table" and next(default) == nil)
-      ,
-      "Default argument: expected a string, a number, nil, or {}"
-    )
-
     local k, ek, v = disect(key)
 
+    -- if there's no VALUE indicator anywhere, what they want really is a flag.
+    -- e.g:
+    --
+    --     cli:option('-q, --quiet', '...')
     if v == nil then
       return self:add_flag(key, desc, default, callback)
     end
+
+    validate_default_for_option(key, default)
 
     really_add_option(k, ek, v, key, desc, default, callback)
   end
@@ -330,9 +348,7 @@ return function()
       "Key and description are mandatory arguments (Strings)"
     )
 
-    assert(default == nil or type(default) == "boolean",
-      "Default argument: expected a boolean or nil"
-    )
+    validate_default_for_flag(key, default)
 
     local k, ek, v = disect(key)
 
@@ -483,7 +499,11 @@ return function()
 
         local status, err = entry.callback(optkey, optval, altkey, opt)
         if status == nil and err then
-          return on_error(err)
+          if err == signals.SIGNAL_RESTART then
+            return self:parse(arguments)
+          else
+            return on_error(err)
+          end
         end
       end
     end

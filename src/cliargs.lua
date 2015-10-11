@@ -3,8 +3,8 @@ local unpack = _G.unpack or table.unpack
 
 local cli = setmetatable({},{ __index = core })
 
-function cli:parse(arguments, no_print, dump, no_cleanup)
-  local out = { core.parse(self, arguments, no_print, dump) }
+function cli:parse(arguments, no_cleanup)
+  local out = { core.parse(self, arguments) }
 
   if not no_cleanup then
     cli.cleanup()
