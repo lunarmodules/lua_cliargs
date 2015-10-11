@@ -3,14 +3,16 @@
 # Watches spec files and re-runs the busted suite when a spec or source file
 # changes.
 #
+# Usage:
+#
+#     $0 [--focus]
+#
+# If --focus is passed, only the last spec file that has changed will be run
+# when a _source_ file changes. Otherwise, all specs will run on source changes.
+#
 # Requires inotify-tools[1].
 #
 # [1] http://linux.die.net/man/1/inotifywait
-
-if [ -z $1 ]; then
-  echo "Usage: $0"
-  exit 1
-fi
 
 if [ ! -d spec ]; then
   echo "Must be run from lua_cliargs root."
@@ -25,7 +27,10 @@ inotifywait -rm --format '%w %f' -e close_write -e create src/ spec/ | while rea
   if [[ $FILEPATH =~ src\/ ]]; then
     busted "${LAST_FILE}"
   else
-    LAST_FILE=$FILEPATH
+    if [[ $1 =~ "focus" ]]; then
+      LAST_FILE=$FILEPATH
+    fi
+
     busted "${FILEPATH}"
   fi
 done

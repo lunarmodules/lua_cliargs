@@ -8,6 +8,22 @@
 #   $ ./bin/coverage
 #   $ cat luacov.report.out
 
+which luacov &> /dev/null
+
+if [ $? -ne 0 ]; then
+  echo "You must have luacov installed."
+  echo "Run 'luarocks install luacov' then try again".
+  exit 1
+fi
+
+which busted &> /dev/null
+
+if [ $? -ne 0 ]; then
+  echo "You must have luacov installed."
+  echo "Run 'luarocks install busted' then try again".
+  exit 1
+fi
+
 busted -c
 luacov src/
 rm luacov.stats.out

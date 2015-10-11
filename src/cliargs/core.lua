@@ -331,7 +331,7 @@ return function()
     end
 
     if not arguments then
-      arguments = arg or {}
+      arguments = _G['arg'] or {}
     end
 
     -- clone args, don't mutate the original set:
@@ -340,9 +340,11 @@ return function()
       args[k] = v
     end
 
-    -- starts with --help? display the help listing and abort!
-    if args[1] and (args[1] == "--help" or args[1] == "-h") then
-      return nil, self:print_help(noprint)
+    -- has --help or -h ? display the help listing and abort!
+    for k, v in pairs(args) do
+      if v == "--help" or v == "-h" then
+        return nil, self:print_help(noprint)
+      end
     end
 
     -- starts with --__DUMP__; set dump to true to dump the parsed arguments
@@ -358,8 +360,13 @@ return function()
       local opt = args[1]
       local optpref, optkey, optkey2, optval
       local flag_negated = false
-      _, _, optpref, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
 
+      if opt == "--" then
+        table.remove(args, 1)
+        break   -- end of options
+      end
+
+      _, _, optpref, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
       if optkey then
         _, _, optkey2, optval = optkey:find("(.-)[=](.+)")       -- split value and key
         if optval then
@@ -369,11 +376,6 @@ return function()
 
       if not optpref then
         break   -- no optional prefix, so options are done
-      end
-
-      if opt == "--" then
-        table.remove(args, 1)
-        break   -- end of options
       end
 
       if optkey:sub(-1,-1) == "=" then  -- check on a blank value eg. --insert=

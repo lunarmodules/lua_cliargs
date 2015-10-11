@@ -1,10 +1,57 @@
-require "spec_helper"
+local helpers = require "spec_helper"
 
 describe("cliargs::core", function()
   local cli
 
   before_each(function()
     cli = require("cliargs.core")()
+  end)
+
+  describe('#parse', function()
+    context('when invoked without the arguments table', function()
+      it('uses the global _G["arg"] one', function()
+        _G["arg"] = {"--quiet"}
+
+        cli:add_option('--quiet', '...')
+        local args = cli:parse(true)
+
+        assert.equal(args.quiet, true)
+      end)
+    end)
+
+    it('does not mutate the argument table', function()
+      local arguments = { "--quiet" }
+      cli:add_option('--quiet', '...')
+
+      local args = cli:parse(arguments, true)
+
+      assert.equal(#arguments, 1)
+      assert.equal(arguments[1], "--quiet")
+    end)
+
+    describe('displaying the help listing', function()
+      before_each(function()
+        cli:add_argument('INPUT', '...')
+        cli:add_flag('--quiet', '...')
+        stub(cli, 'print_help')
+      end)
+
+      after_each(function()
+        assert.stub(cli.print_help).called()
+      end)
+
+      it('works with --help in the beginning', function()
+        helpers.parse(cli, '--help something')
+      end)
+
+      it('works with --help in the end of options', function()
+        helpers.parse(cli, '--quiet --help something')
+      end)
+
+      it('works with --help after an argument', function()
+        helpers.parse(cli, '--quiet something --help')
+      end)
+    end)
   end)
 
   describe("#parse - the @noprint option", function()
