@@ -5,7 +5,7 @@ describe("cliargs - flags", function()
 
   before_each(function()
     cli = require("cliargs.core")()
-    cli.on_error = error
+    cli:set_error_handler(function(msg) error(msg) end)
   end)
 
   describe('defining flags', function()
@@ -93,11 +93,9 @@ describe("cliargs - flags", function()
 
     context('given an unknown flag', function()
       it('bails', function()
-        stub(cli, 'on_error')
-
-        helpers.parse(cli, '--asdf', true)
-
-        assert.match('unknown', helpers.get_stub_call_arg(cli.on_error, 1, 1))
+        assert.error_matches(function()
+          helpers.parse(cli, '--asdf', true)
+        end, 'unknown')
       end)
     end)
   end)

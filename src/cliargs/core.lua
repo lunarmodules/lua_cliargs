@@ -5,31 +5,11 @@ local _
 -- ------- --
 
 local disect = require('cliargs.utils.disect')
+local lookup = require('cliargs.utils.lookup')
 local printer = require('cliargs.printer')
 
 local function is_callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
-end
-
--- Used internally to lookup an entry using either its short or expanded keys
-local function lookup(k, ek, argtable)
-  local t = argtable
-
-  for _,entry in ipairs(t) do
-    if k  and entry.key == k then
-      return entry
-    end
-
-    if ek and entry.expanded_key == ek then
-      return entry
-    end
-
-    if entry.has_no_flag then
-      if ek and ("no-"..entry.expanded_key) == ek then return entry end
-    end
-  end
-
-  return nil
 end
 
 -- -------- --
@@ -40,33 +20,33 @@ return function()
   local optional = {}
   local optargument = {maxcount = 0}
   local colsz = { 0, 0 } -- column width, help text. Set to 0 for auto detect
+  local name = ""
+  local description = ""
+  local silent = false
 
-  local cli = {
-    name = "",
-    description = "",
+  local cli = {}
 
-    --- @property {function} on_error
-    ---
-    --- A function to call when a parsing error has occured (at run-time).
-    ---
-    --- @param {string} msg
-    ---        The error message.
-    ---
-    --- @param {bool} noprint
-    ---        Whether the client has requested not to print anything to
-    ---        STDOUT. You should probably respect this if you define this
-    ---        handler.
-    on_error = nil
-  }
+  --- @property {function} custom_error_handler
+  ---
+  --- A function to call when a parsing error has occured (at run-time).
+  ---
+  --- @param {string} msg
+  ---        The error message.
+  ---
+  --- @param {bool} noprint
+  ---        Whether the client has requested not to print anything to
+  ---        STDOUT. You should probably respect this if you define this
+  ---        handler.
+  local custom_error_handler = nil
 
-  local function on_error(msg, noprint)
-    if cli.on_error then
-      return cli.on_error(msg)
+  local function on_error(msg)
+    if custom_error_handler then
+      return custom_error_handler(msg, { name = name })
     end
 
-    local full_msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
+    local full_msg = name .. ": error: " .. msg .. '; re-run with --help for usage.'
 
-    if not noprint then
+    if not silent then
       print(full_msg)
     end
 
@@ -108,6 +88,8 @@ return function()
 
   local function get_parser_state()
     return {
+      name = name,
+      description = description,
       required = required,
       optional = optional,
       optargument = optargument
@@ -118,14 +100,35 @@ return function()
   -- PUBLIC API
   -- ------------------------------------------------------------------------ --
 
+  --- CONFIG
+
   --- Assigns the name of the program which will be used for logging.
-  function cli:set_name(name)
-    self.name = name
+  function cli:set_name(in_name)
+    name = in_name
   end
 
   --- Write down a brief, 1-liner description of what the program does.
-  function cli:set_description(description)
-    self.description = description
+  function cli:set_description(in_description)
+    description = in_description
+  end
+
+  -- TODO: move to printer
+  --
+  --- Sets the amount of space allocated to the argument keys and descriptions in the help listing.
+  --- The sizes are used for wrapping long argument keys and descriptions.
+  --- ### Parameters
+  --- 1. **key_cols**: the number of columns assigned to the argument keys, set to 0 to auto detect (default: 0)
+  --- 1. **desc_cols**: the number of columns assigned to the argument descriptions, set to 0 to auto set the total width to 72 (default: 0)
+  function cli:set_colsz(key_cols, desc_cols)
+    colsz = { key_cols or colsz[1], desc_cols or colsz[2] }
+  end
+
+  function cli:set_silent(in_silent)
+    silent = in_silent
+  end
+
+  function cli:set_error_handler(handler)
+    custom_error_handler = handler
   end
 
   --- Define a required argument.
@@ -324,11 +327,13 @@ return function()
   --- ### Returns
   --- 1. a table containing the keys specified when the arguments were defined along with the parsed values,
   --- or nil + error message (--help option is considered an error and returns nil + help message)
-  function cli:parse(arguments, noprint, dump)
-    if type(arguments) ~= "table" then
-      -- optional 'arguments' was not provided, so shift remaining arguments
-      noprint, dump, arguments = arguments, noprint, nil
-    end
+  function cli:parse(arguments)
+    local dump = nil
+
+    assert(arguments == nil or type(arguments) == "table",
+      "expected an argument table to be passed in, " ..
+      "got something of type " .. type(arguments)
+    )
 
     if not arguments then
       arguments = _G['arg'] or {}
@@ -341,18 +346,16 @@ return function()
     end
 
     -- has --help or -h ? display the help listing and abort!
-    for k, v in pairs(args) do
+    for _, v in pairs(args) do
       if v == "--help" or v == "-h" then
-        return nil, self:print_help(noprint)
+        return nil, self:print_help()
       end
     end
 
     -- starts with --__DUMP__; set dump to true to dump the parsed arguments
-    if dump == nil then
-      if args[1] and args[1] == "--__DUMP__" then
-        dump = true
-        table.remove(args, 1)  -- delete it to prevent further parsing
-      end
+    if dump == nil and args[1] and args[1] == "--__DUMP__" then
+      dump = true
+      table.remove(args, 1)  -- delete it to prevent further parsing
     end
 
     while args[1] do
@@ -399,7 +402,7 @@ return function()
       if not optkey or not entry then
         local option_type = optval and "option" or "flag"
 
-        return on_error("unknown/bad " .. option_type .. ": " .. opt, noprint)
+        return on_error("unknown/bad " .. option_type .. ": " .. opt)
       end
 
       if flag_negated and not entry.has_no_flag then
@@ -423,7 +426,7 @@ return function()
         if entry then
           if entry.flag then
             if optval then
-              return on_error("flag --" .. optkey .. " does not take a value", noprint)
+              return on_error("flag --" .. optkey .. " does not take a value")
             else
               optval = not flag_negated
             end
@@ -435,7 +438,7 @@ return function()
             end
           end
         else
-          return on_error("unknown/bad flag: " .. opt, noprint)
+          return on_error("unknown/bad flag: " .. opt)
         end
       end
 
@@ -457,7 +460,7 @@ return function()
 
         local status, err = entry.callback(optkey, optval, altkey, opt)
         if status == nil and err then
-          return on_error(err, noprint)
+          return on_error(err)
         end
       end
     end
@@ -465,9 +468,9 @@ return function()
     -- missing any required arguments, or too many?
     if #args < #required or #args > #required + optargument.maxcount then
       if optargument.maxcount > 0 then
-        return on_error("bad number of arguments: " .. #required .."-" .. #required + optargument.maxcount .. " argument(s) must be specified, not " .. #args, noprint)
+        return on_error("bad number of arguments: " .. #required .."-" .. #required + optargument.maxcount .. " argument(s) must be specified, not " .. #args)
       else
-        return on_error("bad number of arguments: " .. #required .. " argument(s) must be specified, not " .. #args, noprint)
+        return on_error("bad number of arguments: " .. #required .. " argument(s) must be specified, not " .. #args)
       end
     end
 
@@ -477,7 +480,7 @@ return function()
       if entry.callback then
         local status, err = entry.callback(entry.key, entry.value)
         if status == nil and err then
-          return on_error(err, noprint)
+          return on_error(err)
         end
       end
       table.remove(args, 1)
@@ -493,7 +496,7 @@ return function()
       if optargument.callback then
         local status, err = optargument.callback(optargument.key, args[1])
         if status == nil and err then
-          return on_error(err, noprint)
+          return on_error(err)
         end
       end
       table.remove(args,1)
@@ -521,27 +524,24 @@ return function()
     end
 
     if dump then
-      printer.dump_internal_state(get_parser_state())
+      if not silent then
+        printer.dump_internal_state(get_parser_state())
+      end
 
-      return on_error("commandline dump created as requested per '--__DUMP__' option", noprint)
+      return on_error("commandline dump created as requested per '--__DUMP__' option")
     end
-
 
     return results
   end
 
-
-  --- Prints the USAGE heading.
+  --- Prints the USAGE message.
   ---
-  --- ### Parameters
-   ---1. **noprint**: set this flag to prevent the line from being printed
-  ---
-  --- ### Returns
-  --- 1. a string with the USAGE message.
-  function cli:print_usage(noprint)
+  --- @return {string}
+  ---         The USAGE message.
+  function cli:print_usage()
     local msg = printer.generate_usage(get_parser_state())
 
-    if not noprint then
+    if not silent then
       print(msg)
     end
 
@@ -550,30 +550,16 @@ return function()
 
   --- Prints the HELP information.
   ---
-  --- ### Parameters
-  --- 1. **noprint**: set this flag to prevent the information from being printed
-  ---
-  --- ### Returns
-  --- 1. a string with the HELP message.
-  function cli:print_help(noprint)
+  --- @return {string}
+  ---         The HELP message.
+  function cli:print_help()
     local msg = printer.generate_help(get_parser_state(), colsz)
 
-    if not noprint == true then
+    if not silent then
       print(msg)
     end
 
     return msg
-  end
-
-  -- TODO: move to printer
-  --
-  --- Sets the amount of space allocated to the argument keys and descriptions in the help listing.
-  --- The sizes are used for wrapping long argument keys and descriptions.
-  --- ### Parameters
-  --- 1. **key_cols**: the number of columns assigned to the argument keys, set to 0 to auto detect (default: 0)
-  --- 1. **desc_cols**: the number of columns assigned to the argument descriptions, set to 0 to auto set the total width to 72 (default: 0)
-  function cli.set_colsz(key_cols, desc_cols)
-    colsz = { key_cols or colsz[1], desc_cols or colsz[2] }
   end
 
   return cli

@@ -5,7 +5,7 @@ describe("cliargs - arguments", function()
 
   before_each(function()
     cli = require("cliargs.core")()
-    cli.on_error = error
+    cli:set_error_handler(function(msg) error(msg) end)
   end)
 
   describe('defining arguments', function()
@@ -65,27 +65,17 @@ describe("cliargs - arguments", function()
       cli:add_argument('INPUT', 'path to the input file')
       cli:add_argument('OUTPUT', 'path to the output file')
 
-      stub(cli, 'on_error')
-
-      helpers.parse(cli, '/some/where', true)
-
-      assert.match(
-        'bad number of arguments',
-        helpers.get_stub_call_arg(cli.on_error, 1, 1)
-      )
+      assert.error_matches(function()
+        helpers.parse(cli, '/some/where')
+      end, 'bad number of arguments')
     end)
 
     it('bails on too many arguments', function()
       cli:add_argument('INPUT', 'path to the input file')
 
-      stub(cli, 'on_error')
-
-      helpers.parse(cli, 'foo bar', true)
-
-      assert.match(
-        'bad number of arguments',
-        helpers.get_stub_call_arg(cli.on_error, 1, 1)
-      )
+      assert.error_matches(function()
+        helpers.parse(cli, 'foo bar')
+      end, 'bad number of arguments')
     end)
   end)
 

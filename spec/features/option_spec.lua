@@ -5,7 +5,7 @@ describe("cliargs - options", function()
 
   before_each(function()
     cli = require("cliargs.core")()
-    cli.on_error = error
+    cli:set_error_handler(function(msg) error(msg) end)
   end)
 
   describe('defining options', function()
@@ -137,11 +137,9 @@ describe("cliargs - options", function()
 
     context('given an unknown option', function()
       it('bails', function()
-        stub(cli, 'on_error')
-
-        helpers.parse(cli, '--asdf=jkl;', true)
-
-        assert.match('unknown', helpers.get_stub_call_arg(cli.on_error, 1, 1))
+        assert.error_matches(function()
+          helpers.parse(cli, '--asdf=jkl;', true)
+        end, 'unknown')
       end)
     end)
   end)
@@ -208,19 +206,13 @@ describe("cliargs - options", function()
 
     context('when the callback returns an error message', function()
       it('propagates the error', function()
-        stub(cli, 'on_error', function(msg)
-          return nil, msg
-        end)
-
         cli:add_option('-c, --compress=VALUE', '...', nil, function()
           return nil, ">>> bad argument <<<"
         end)
 
-        local result, err = helpers.parse(cli, '-c lzma', true)
-
-        assert.equal(result, nil)
-        assert.equal(type(err), "string")
-        assert.matches(">>> bad argument <<<", err)
+        assert.error_matches(function()
+          helpers.parse(cli, '-c lzma', true)
+        end, '>>> bad argument <<<')
       end)
     end)
 

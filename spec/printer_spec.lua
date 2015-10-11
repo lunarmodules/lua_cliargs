@@ -8,8 +8,9 @@ describe('printer', function()
   describe('for a repeatable/list-like option', function()
     it("should print [] as the default value in the --help listing", function()
       cli:add_option("-k, --key=VALUE", "key that can be specified multiple times", {})
+      cli:set_silent(true)
 
-      local help_msg = cli:print_help(true)
+      local help_msg = cli:print_help()
 
       assert.matches(
         "key that can be specified multiple times %(default: %[%]%)",

@@ -5,7 +5,7 @@ describe("cliargs - splat arguments", function()
 
   before_each(function()
     cli = require("cliargs.core")()
-    cli.on_error = error
+    cli:set_error_handler(function(msg) error(msg) end)
   end)
 
   describe('defining the splat arg', function()

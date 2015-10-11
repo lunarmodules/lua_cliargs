@@ -19,12 +19,8 @@ function xit(desc, _)
   busted.it(desc)
 end
 
-exports.parse = function(cli, str, noprint)
-  return cli:parse(split(str, '%s+'), noprint == nil and true or noprint)
-end
-
-exports.get_stub_call_arg = function(stub, call_index, arg_index)
-  return stub.calls[call_index].vals[arg_index]
+exports.parse = function(cli, str)
+  return cli:parse(split(str, '%s+'))
 end
 
 return exports
