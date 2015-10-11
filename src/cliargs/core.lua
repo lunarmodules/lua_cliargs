@@ -1,3 +1,5 @@
+-- luacheck: ignore 212
+
 local _
 
 -- ------- --
@@ -6,6 +8,7 @@ local _
 
 local disect = require('cliargs.utils.disect')
 local lookup = require('cliargs.utils.lookup')
+local shallow_copy = require('cliargs.utils.shallow_copy')
 local printer = require('cliargs.printer')
 
 local function is_callable(fn)
@@ -47,7 +50,7 @@ return function()
     local full_msg = name .. ": error: " .. msg .. '; re-run with --help for usage.'
 
     if not silent then
-      print(full_msg)
+      printer.print(full_msg)
     end
 
     return nil, full_msg
@@ -77,9 +80,7 @@ return function()
       label = label,
       flag = flag,
       has_no_flag = has_no_flag,
-      value = default,
       callback = callback,
-
       __display_key = ek or k
     }
 
@@ -94,6 +95,28 @@ return function()
       optional = optional,
       optargument = optargument
     }
+  end
+
+  local function get_initial_values()
+    local initial_values = {}
+
+    for _, entry in ipairs(required) do
+      initial_values[entry] = entry.default
+    end
+
+    for _, entry in ipairs(optional) do
+      initial_values[entry] = entry.default
+    end
+
+    if optargument.key then
+      if optargument.maxcount > 1 then
+        initial_values[optargument] = {}
+      else
+        initial_values[optargument] = optargument.default
+      end
+    end
+
+    return initial_values
   end
 
   -- ------------------------------------------------------------------------ --
@@ -129,6 +152,14 @@ return function()
 
   function cli:set_error_handler(handler)
     custom_error_handler = handler
+  end
+
+  function cli:redefine_default(key, new_default)
+    local entry = lookup(key, key, optional)
+
+    assert(entry, "Unrecognized option with the key '" .. key .. "'")
+
+    entry.default = new_default
   end
 
   --- Define a required argument.
@@ -169,7 +200,6 @@ return function()
     table.insert(required, {
       key = key,
       desc = desc,
-      value = nil,
       callback = callback
     })
   end
@@ -218,7 +248,6 @@ return function()
       desc = desc,
       default = default,
       maxcount = maxcount,
-      value = nil,
       callback = callback
     }
   end
@@ -340,10 +369,7 @@ return function()
     end
 
     -- clone args, don't mutate the original set:
-    local args = {}
-    for k,v in pairs(arguments) do
-      args[k] = v
-    end
+    local args = shallow_copy(arguments)
 
     -- has --help or -h ? display the help listing and abort!
     for _, v in pairs(args) do
@@ -358,10 +384,12 @@ return function()
       table.remove(args, 1)  -- delete it to prevent further parsing
     end
 
+    local values = get_initial_values()
+
     while args[1] do
       local entry = nil
       local opt = args[1]
-      local optpref, optkey, optkey2, optval
+      local symbol, optkey, optkey2, optval
       local flag_negated = false
 
       if opt == "--" then
@@ -369,21 +397,16 @@ return function()
         break   -- end of options
       end
 
-      _, _, optpref, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
+      _, _, symbol, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
       if optkey then
-        _, _, optkey2, optval = optkey:find("(.-)[=](.+)")       -- split value and key
+        _, _, optkey2, optval = optkey:find("(.-)[=](.*)")       -- split value and key
         if optval then
           optkey = optkey2
         end
       end
 
-      if not optpref then
+      if not symbol then
         break   -- no optional prefix, so options are done
-      end
-
-      if optkey:sub(-1,-1) == "=" then  -- check on a blank value eg. --insert=
-        optval = ""
-        optkey = optkey:sub(1,-2)
       end
 
       if optkey:sub(1,3) == "no-" then
@@ -393,8 +416,8 @@ return function()
 
       if optkey then
         entry = lookup(
-          optpref == '-' and optkey or nil,
-          optpref == '--' and optkey or nil,
+          symbol == '-' and optkey or nil,
+          symbol == '--' and optkey or nil,
           optional
         )
       end
@@ -411,7 +434,7 @@ return function()
 
       table.remove(args, 1)
 
-      if optpref == "-" then
+      if symbol == "-" then
         if entry.flag then
           optval = not flag_negated
         elseif not optval then
@@ -419,7 +442,7 @@ return function()
           optval = args[1]
           table.remove(args, 1)
         end
-      elseif optpref == "--" then
+      elseif symbol == "--" then
         -- using the expanded-key notation
         entry = lookup(nil, optkey, optional)
 
@@ -442,10 +465,10 @@ return function()
         end
       end
 
-      if type(entry.value) == 'table' then
-        table.insert(entry.value, optval)
+      if type(entry.default) == 'table' then
+        table.insert(values[entry], optval)
       else
-        entry.value = optval
+        values[entry] = optval
       end
 
       -- invoke the option's parse-callback, if any
@@ -476,56 +499,65 @@ return function()
 
     -- deal with required args here
     for _, entry in ipairs(required) do
-      entry.value = args[1]
+      values[entry] = args[1]
+
       if entry.callback then
-        local status, err = entry.callback(entry.key, entry.value)
+        local status, err = entry.callback(entry.key, args[1])
         if status == nil and err then
           return on_error(err)
         end
       end
+
       table.remove(args, 1)
     end
+
     -- deal with the last optional argument
     while args[1] do
       if optargument.maxcount > 1 then
-        optargument.value = optargument.value or {}
-        table.insert(optargument.value, args[1])
+        table.insert(values[optargument], args[1])
       else
-        optargument.value = args[1]
+        values[optargument] = args[1]
       end
+
       if optargument.callback then
         local status, err = optargument.callback(optargument.key, args[1])
         if status == nil and err then
           return on_error(err)
         end
       end
+
       table.remove(args,1)
     end
+
     -- if necessary set the defaults for the last optional argument here
-    if optargument.maxcount > 0 and not optargument.value then
-      if optargument.maxcount == 1 then
-        optargument.value = optargument.default
-      else
-        optargument.value = { optargument.default }
-      end
+    if optargument.maxcount > 1 and #values[optargument] == 0 then
+      values[optargument] = { optargument.default }
     end
 
     -- populate the results table
     local results = {}
-    if optargument.maxcount > 0 then
-      results[optargument.key] = optargument.value
+
+    if optargument.key then
+      results[optargument.key] = values[optargument]
     end
+
     for _, entry in pairs(required) do
-      results[entry.key] = entry.value
+      results[entry.key] = values[entry]
     end
+
     for _, entry in pairs(optional) do
-      if entry.key then results[entry.key] = entry.value end
-      if entry.expanded_key then results[entry.expanded_key] = entry.value end
+      if entry.key then
+        results[entry.key] = values[entry]
+      end
+
+      if entry.expanded_key then
+        results[entry.expanded_key] = values[entry]
+      end
     end
 
     if dump then
       if not silent then
-        printer.dump_internal_state(get_parser_state())
+        printer.dump_internal_state(get_parser_state(), values)
       end
 
       return on_error("commandline dump created as requested per '--__DUMP__' option")
@@ -542,7 +574,7 @@ return function()
     local msg = printer.generate_usage(get_parser_state())
 
     if not silent then
-      print(msg)
+      printer.print(msg)
     end
 
     return msg
@@ -556,7 +588,7 @@ return function()
     local msg = printer.generate_help(get_parser_state(), colsz)
 
     if not silent then
-      print(msg)
+      printer.print(msg)
     end
 
     return msg

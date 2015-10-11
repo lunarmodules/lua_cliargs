@@ -25,12 +25,12 @@ inotifywait -rm --format '%w %f' -e close_write -e create src/ spec/ | while rea
   FILEPATH="${dir}${file}"
 
   if [[ $FILEPATH =~ src\/ ]]; then
-    busted "${LAST_FILE}"
+    busted $@ "${LAST_FILE}"
   else
     if [[ $1 =~ "focus" ]]; then
       LAST_FILE=$FILEPATH
     fi
 
-    busted "${FILEPATH}"
+    busted $@ "${FILEPATH}"
   fi
 done

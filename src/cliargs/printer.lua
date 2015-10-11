@@ -2,6 +2,12 @@ local wordwrap = require('cliargs.utils.wordwrap')
 local MAX_COLS = 72
 local _
 
+local printer = {}
+
+local function print(msg)
+  return printer.print(msg)
+end
+
 local function get_max_label_length(state)
   local maxsz = 0
 
@@ -18,8 +24,12 @@ local function get_max_label_length(state)
   return maxsz
 end
 
+function printer.print(msg)
+  return _G.print(msg)
+end
+
 -- Generate the USAGE heading message.
-local function generate_usage(state)
+function printer.generate_usage(state)
   local msg = "Usage: " .. tostring(state.name)
 
   if #state.optional > 0 then
@@ -44,8 +54,8 @@ local function generate_usage(state)
   return msg
 end
 
-local function generate_help(state, colsz)
-  local msg = generate_usage(state) .. "\n"
+function printer.generate_help(state, colsz)
+  local msg = printer.generate_usage(state) .. "\n"
   local col1 = colsz[1]
   local col2 = colsz[2]
 
@@ -100,7 +110,7 @@ local function generate_help(state, colsz)
   return msg
 end
 
-local function dump_internal_state(state)
+function printer.dump_internal_state(state, values)
   local maxlabel = get_max_label_length(state)
 
   print("\n======= Provided command line =============")
@@ -112,8 +122,14 @@ local function dump_internal_state(state)
 
   print("\n======= Parsed command line ===============")
   if #state.required > 0 then print("\nArguments:") end
-  for _,v in ipairs(state.required) do
-    print("  " .. v.key .. string.rep(" ", maxlabel + 2 - #v.key) .. " => '" .. v.value .. "'")
+  for _, entry in ipairs(state.required) do
+    print(
+      "  " ..
+      entry.key .. string.rep(" ", maxlabel + 2 - #entry.key) ..
+      " => '" ..
+      values[entry] ..
+      "'"
+    )
   end
 
   if state.optargument.maxcount > 0 then
@@ -135,12 +151,12 @@ local function dump_internal_state(state)
         )
     else
       for i = 1, state.optargument.maxcount do
-        if state.optargument.value[i] then
+        if values[state.optargument][i] then
           print(
             "  " .. tostring(i) ..
             string.rep(" ", maxlabel + 2 - #tostring(i)) ..
             " => '" ..
-            tostring(state.optargument.value[i]) ..
+            tostring(values[state.optargument][i]) ..
             "'"
           )
         end
@@ -150,24 +166,23 @@ local function dump_internal_state(state)
 
   if #state.optional > 0 then print("\nOptional parameters:") end
   local doubles = {}
-  for _, v in pairs(state.optional) do
-    if not doubles[v] then
-      local m = v.value
-      if type(m) == "string" then
-        m = "'"..m.."'"
+  for _, entry in pairs(state.optional) do
+    if not doubles[entry] then
+      local value = values[entry]
+
+      if type(value) == "string" then
+        value = "'"..value.."'"
       else
-        m = tostring(m) .." (" .. type(m) .. ")"
+        value = tostring(value) .." (" .. type(value) .. ")"
       end
-      print("  " .. v.label .. string.rep(" ", maxlabel + 2 - #v.label) .. " => " .. m)
-      doubles[v] = v
+
+      print("  " .. entry.label .. string.rep(" ", maxlabel + 2 - #entry.label) .. " => " .. value)
+
+      doubles[entry] = entry
     end
   end
 
   print("\n===========================================\n\n")
 end
 
-return {
-  generate_usage = generate_usage,
-  generate_help = generate_help,
-  dump_internal_state = dump_internal_state
-}
+return printer

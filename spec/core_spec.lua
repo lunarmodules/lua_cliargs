@@ -1,4 +1,5 @@
 local helpers = require "spec_helper"
+local printer = require "cliargs.printer"
 
 describe("cliargs::core", function()
   local cli
@@ -38,7 +39,7 @@ describe("cliargs::core", function()
       local arguments = { "--quiet" }
       cli:add_option('--quiet', '...')
 
-      local args = cli:parse(arguments)
+      cli:parse(arguments)
 
       assert.equal(#arguments, 1)
       assert.equal(arguments[1], "--quiet")
@@ -119,12 +120,36 @@ describe("cliargs::core", function()
 
   describe('#parse - the --__DUMP__ special option', function()
     it('dumps the state and errors out', function()
-      cli:set_silent(true)
+      stub(printer, 'print')
+
+      cli:set_silent(false)
       cli:set_error_handler(function(msg) error(msg) end)
 
+      cli:add_argument('INPUT', '...')
+      cli:add_option('-c, --compress=VALUE', '...')
+      cli:add_flag('-q, --quiet', '...', true)
+
       assert.error_matches(function()
-        cli:parse({'--__DUMP__'})
+        cli:parse({'--__DUMP__', 'asdf'})
       end, 'commandline dump created')
+    end)
+  end)
+
+  describe('#redefine_default', function()
+    it('allows me to change the default for an option', function()
+      cli:add_option('-c, --compress=VALUE', '...', 'lzma')
+      assert.equal(cli:parse({}).compress, 'lzma')
+
+      cli:redefine_default('compress', 'bz2')
+      assert.equal(cli:parse({}).compress, 'bz2')
+    end)
+
+    it('allows me to change the default for a flag', function()
+      cli:add_flag('-q, --quiet', '...', false)
+      assert.equal(cli:parse({}).quiet, false)
+
+      cli:redefine_default('quiet', true)
+      assert.equal(cli:parse({}).quiet, true)
     end)
   end)
 end)
