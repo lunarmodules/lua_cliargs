@@ -107,26 +107,49 @@ describe("integration: parsing", function()
         quiet = true
       })
     end)
+
+    it('works when an option comes after an argument', function()
+      local args, err = helpers.parse(cli, 'asdf --quiet')
+
+      assert.equal(err, nil)
+      assert.same(args, {
+        FOO = 'asdf',
+        quiet = true
+      })
+    end)
   end)
 
   describe('using -- to separate options from arguments', function()
+    before_each(function()
+      cli:add_argument('INPUT', '...')
+      cli:optarg('OUTPUT', '...', nil, 1)
+      cli:add_flag('--verbose', '...')
+      cli:add_flag('--quiet', '...')
+    end)
+
     -- TODO: i'm not sure what the original intent was behind this, but this
     -- acts funny if we pass an option after the --
     --
     -- wasn't the -- supposed to mean "don't care about what's next and just
     -- pass it on" ?
     it('works', function()
-      cli:add_argument('INPUT', '...')
-      cli:optarg('OUTPUT', '...', nil, 1)
-      cli:add_flag('--verbose', '...')
-      cli:add_flag('--quiet', '...')
-
       local args = helpers.parse(cli, '--verbose -- --input -d')
 
       assert.same(args, {
         INPUT = "--input",
         OUTPUT = "-d",
         verbose = true,
+        quiet = nil
+      })
+    end)
+
+    it('does not actually parse an option if it comes after --', function()
+      local args = helpers.parse(cli, '-- --input --quiet')
+
+      assert.same(args, {
+        INPUT = "--input",
+        OUTPUT = "--quiet",
+        verbose = nil,
         quiet = nil
       })
     end)

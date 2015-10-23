@@ -7,6 +7,7 @@ local _
 -- ------- --
 
 local disect = require('cliargs.utils.disect')
+local disect_argument = require('cliargs.utils.disect_argument')
 local lookup = require('cliargs.utils.lookup')
 local shallow_copy = require('cliargs.utils.shallow_copy')
 local printer = require('cliargs.printer')
@@ -257,7 +258,7 @@ return function()
 
     maxcount = tonumber(maxcount or 1)
 
-    assert(maxcount and maxcount > 0 and maxcount < 1000,
+    assert(maxcount > 0 and maxcount < 1000,
       "Maxcount must be a number from 1 to 999"
     )
 
@@ -401,152 +402,132 @@ return function()
     end
 
     local values = get_initial_values()
+    local argument_delimiter_found = false
+    local function consume()
+      table.remove(args, 1)
+    end
 
-    while args[1] do
-      local entry = nil
-      local opt = args[1]
-      local symbol, optkey, optkey2, optval
-      local flag_negated = false
+    local argument_cursor = 0
 
-      if opt == "--" then
-        table.remove(args, 1)
-        break   -- end of options
-      end
+    while #args > 0 do
+      local curr_opt = args[1]
+      local next_opt = args[2]
+      local symbol, key, value, flag_negated = disect_argument(args[1])
 
-      _, _, symbol, optkey = opt:find("^(%-[%-]?)(.+)")   -- split PREFIX & NAME+VALUE
-      if optkey then
-        _, _, optkey2, optval = optkey:find("(.-)[=](.*)")       -- split value and key
-        if optval then
-          optkey = optkey2
-        end
-      end
+      consume()
 
-      if not symbol then
-        break   -- no optional prefix, so options are done
-      end
+      -- end-of-options indicator:
+      if curr_opt == "--" then
+        argument_delimiter_found = true
 
-      if optkey:sub(1,3) == "no-" then
-        optkey = optkey:sub(4,-1)
-        flag_negated = true
-      end
-
-      if optkey then
-        entry = lookup(
-          symbol == '-' and optkey or nil,
-          symbol == '--' and optkey or nil,
+      -- an option:
+      elseif not argument_delimiter_found and symbol then
+        local entry = lookup(
+          symbol == '-' and key or nil,
+          symbol == '--' and key or nil,
           optional
         )
-      end
 
-      if not optkey or not entry then
-        local option_type = optval and "option" or "flag"
+        if not key or not entry then
+          local option_type = value and "option" or "flag"
 
-        return on_error("unknown/bad " .. option_type .. ": " .. opt)
-      end
-
-      if flag_negated and not entry.has_no_flag then
-        return on_error("flag '" .. entry.__display_key .. "' may not be negated using --no-")
-      end
-
-      table.remove(args, 1)
-
-      if symbol == "-" then
-        if entry.flag then
-          optval = not flag_negated
-        elseif not optval then
-          -- not a flag, value is in the next argument
-          optval = args[1]
-          table.remove(args, 1)
+          return on_error("unknown/bad " .. option_type .. ": " .. curr_opt)
         end
-      elseif symbol == "--" then
-        -- using the expanded-key notation
-        entry = lookup(nil, optkey, optional)
 
-        if entry then
-          if entry.flag then
-            if optval then
-              return on_error("flag --" .. optkey .. " does not take a value")
-            else
-              optval = not flag_negated
-            end
+        if flag_negated and not entry.has_no_flag then
+          return on_error("flag '" .. entry.__display_key .. "' may not be negated using --no-")
+        end
+
+        -- a flag and a value specified? that's an error
+        if entry.flag and value then
+          return on_error("flag --" .. key .. " does not take a value")
+        elseif entry.flag then
+          value = not flag_negated
+        -- not a flag, value is in the next argument
+        elseif not value then
+          value = next_opt
+          consume()
+        end
+
+        if type(entry.default) == 'table' then
+          table.insert(values[entry], value)
+        else
+          values[entry] = value
+        end
+
+        if entry and entry.callback then
+          local altkey = entry.key
+          local status, err
+
+          if key == entry.key then
+            altkey = entry.expanded_key
           else
-            if not optval then
-              -- value is in the next argument
-              optval = args[1]
-              table.remove(args, 1)
+            key = entry.expanded_key
+          end
+
+          status, err = entry.callback(key, values[entry], altkey, curr_opt)
+
+          if status == nil and err then
+            if err == signals.SIGNAL_RESTART then
+              return self:parse(arguments)
+            else
+              return on_error(err)
             end
           end
-        else
-          return on_error("unknown/bad flag: " .. opt)
         end
-      end
 
-      if type(entry.default) == 'table' then
-        table.insert(values[entry], optval)
+      -- an argument:
       else
-        values[entry] = optval
-      end
+        argument_cursor = argument_cursor + 1
 
-      -- invoke the option's parse-callback, if any
-      if entry.callback then
-        local altkey = entry.key
+        local curr_arg = required[argument_cursor]
+        local entry = curr_arg
 
-        if optkey == entry.key then
-          altkey = entry.expanded_key
-        else
-          optkey = entry.expanded_key
-        end
-
-        local status, err = entry.callback(optkey, optval, altkey, opt)
-        if status == nil and err then
-          if err == signals.SIGNAL_RESTART then
-            return self:parse(arguments)
+        -- splat arg
+        if not curr_arg then
+          if optargument.maxcount > 1 then
+            table.insert(values[optargument], curr_opt)
           else
-            return on_error(err)
+            values[optargument] = curr_opt
+          end
+
+          if optargument.callback then
+            local status, err = optargument.callback(optargument.key, curr_opt)
+            if status == nil and err then
+              return on_error(err)
+            end
+          end
+        -- regular arg
+        else
+          values[entry] = curr_opt
+
+          if entry.callback then
+            local status, err = entry.callback(entry.key, curr_opt)
+
+            if status == nil and err then
+              return on_error(err)
+            end
           end
         end
       end
     end
+
+    local arg_count = argument_cursor
 
     -- missing any required arguments, or too many?
-    if #args < #required or #args > #required + optargument.maxcount then
+    if arg_count < #required or arg_count > #required + optargument.maxcount then
       if optargument.maxcount > 0 then
-        return on_error("bad number of arguments: " .. #required .."-" .. #required + optargument.maxcount .. " argument(s) must be specified, not " .. #args)
+        return on_error(
+          "bad number of arguments: " ..
+          #required .. "-" .. #required + optargument.maxcount ..
+          " argument(s) must be specified, not " .. arg_count
+        )
       else
-        return on_error("bad number of arguments: " .. #required .. " argument(s) must be specified, not " .. #args)
+        return on_error(
+          "bad number of arguments: " ..
+          #required .. " argument(s) must be specified, not " .. arg_count
+        )
       end
-    end
-
-    -- deal with required args here
-    for _, entry in ipairs(required) do
-      values[entry] = args[1]
-
-      if entry.callback then
-        local status, err = entry.callback(entry.key, args[1])
-        if status == nil and err then
-          return on_error(err)
-        end
-      end
-
-      table.remove(args, 1)
-    end
-
-    -- deal with the last optional argument
-    while args[1] do
-      if optargument.maxcount > 1 then
-        table.insert(values[optargument], args[1])
-      else
-        values[optargument] = args[1]
-      end
-
-      if optargument.callback then
-        local status, err = optargument.callback(optargument.key, args[1])
-        if status == nil and err then
-          return on_error(err)
-        end
-      end
-
-      table.remove(args,1)
     end
 
     -- if necessary set the defaults for the last optional argument here

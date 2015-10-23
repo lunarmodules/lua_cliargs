@@ -170,7 +170,7 @@ describe("cliargs - options", function()
 
     it('lets me override/reset the default value', function()
       cli:add_option('--compress=URL', '...', 'lzma')
-      assert.equal(helpers.parse(cli, '--compress=').compress, '')
+      assert.equal(helpers.parse(cli, '--compress=').compress, nil)
     end)
 
     it('rejects everything else', function()

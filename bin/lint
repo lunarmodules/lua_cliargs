@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+which luacheck &> /dev/null
+
+if [ $? -ne 0 ]; then
+  echo "You must have luacheck installed."
+  echo "Run 'luarocks install luacheck' then try again".
+  exit 1
+fi
+
+if [ ! -d src ]; then
+  echo "You must run $0 from lua_cliargs root."
+  exit 1
+fi
+
+luacheck .
