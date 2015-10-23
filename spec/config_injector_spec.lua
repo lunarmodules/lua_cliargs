@@ -99,4 +99,26 @@ describe("cliargs.config_injector", function()
       })
     end)
   end)
+
+  describe('#from_lua', function()
+    it('works', function()
+      cli:add_option('-c, --compress=VALUE', '...', 'lzma')
+      cli:add_flag('-q, --quiet', '...', false)
+      cli:add_option('--config=FILE', '...', nil, function(_, path)
+        return config_injector.from_lua(cli, path)
+      end)
+
+      local args, err = cli:parse({ '--config', 'spec/fixtures/config.lua' })
+
+      assert.equal(err, nil)
+
+      assert.same(args, {
+        c = 'bz2',
+        compress = 'bz2',
+        q = true,
+        quiet = true,
+        config = 'spec/fixtures/config.lua'
+      })
+    end)
+  end)
 end)

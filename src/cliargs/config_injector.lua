@@ -33,6 +33,19 @@ end
 return {
   from_object = inject,
 
+  --- Inject configuration from a Lua file that exports a table.
+  from_lua = function(cli, filepath)
+    local file, err = loadfile(filepath)
+
+    if not file and err then
+      return nil, err
+    end
+
+    local config = file()
+
+    return inject(cli, config)
+  end,
+
   --- Inject configuration from a JSON file.
   ---
   --- Requires the "dkjson"[1] module to be present on the system. Get it with:
