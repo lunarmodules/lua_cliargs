@@ -7,7 +7,7 @@ function cli:parse(arguments, no_cleanup)
   local out = { core.parse(self, arguments) }
 
   if not no_cleanup then
-    cli.cleanup()
+    cli:cleanup()
   end
 
   return unpack(out)
@@ -15,7 +15,7 @@ end
 
 -- Clean up the entire module (unload the scripts) as it's expected to be
 -- discarded after use.
-function cli.cleanup()
+function cli:cleanup()
   for k, v in pairs(package.loaded) do
     if (v == cli) or (k:match('cliargs')) then
       package.loaded[k] = nil
@@ -25,6 +25,6 @@ function cli.cleanup()
   cli = nil
 end
 
-cli._VERSION = "3.0.rc-1"
+cli.VERSION = "3.0.rc-1"
 
 return cli

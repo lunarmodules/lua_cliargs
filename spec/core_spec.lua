@@ -137,6 +137,14 @@ describe("cliargs::core", function()
   end)
 
   describe('#redefine_default', function()
+    it('allows me to change the default for an optargument', function()
+      cli:optarg('ROOT', '...', 'foo')
+      assert.equal(cli:parse({}).ROOT, 'foo')
+
+      cli:redefine_default('ROOT', 'bar')
+      assert.equal(cli:parse({}).ROOT, 'bar')
+    end)
+
     it('allows me to change the default for an option', function()
       cli:add_option('-c, --compress=VALUE', '...', 'lzma')
       assert.equal(cli:parse({}).compress, 'lzma')
@@ -157,7 +165,7 @@ describe("cliargs::core", function()
       cli:add_option('-c VALUE', '...', 'lzma')
 
       assert.error_matches(function()
-        cli:redefine_default('c', { 1 })
+        cli:redefine_default('c', function() end)
       end, 'Default argument')
     end)
 

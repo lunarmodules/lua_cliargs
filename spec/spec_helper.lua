@@ -1,7 +1,7 @@
 -- luacheck: ignore 111
 
 local exports = {}
-local split = require('cliargs.utils.split')
+local split = require 'cliargs.utils.split'
 local busted = require 'busted'
 
 function odescribe(desc, runner)

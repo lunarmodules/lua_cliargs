@@ -6,6 +6,6 @@ return {
     coverage = false,
     verbose = true,
     ROOT = {"spec"},
-    lpath = "src/?.lua;spec/?.lua;"
+    lpath = "src/?.lua;src/cliargs/?.lua;spec/?.lua;"
   }
 }

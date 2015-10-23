@@ -12,6 +12,7 @@ local lookup = require('cliargs.utils.lookup')
 local shallow_copy = require('cliargs.utils.shallow_copy')
 local printer = require('cliargs.printer')
 local signals = require('cliargs.signals')
+local config_injector = require('cliargs.config_injector')
 
 local function is_callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
@@ -23,7 +24,7 @@ local function validate_default_for_option(key, default)
     or type(default) == "number"
     or default == nil
     or type(default) == "boolean"
-    or (type(default) == "table" and next(default) == nil)
+    or type(default) == "table"
     ,
     "Default argument for '" .. key ..
     "' expected a string, a number, nil, or {}, got " .. type(default)
@@ -118,11 +119,11 @@ return function()
     local initial_values = {}
 
     for _, entry in ipairs(required) do
-      initial_values[entry] = entry.default
+      initial_values[entry] = shallow_copy(entry.default)
     end
 
     for _, entry in ipairs(optional) do
-      initial_values[entry] = entry.default
+      initial_values[entry] = shallow_copy(entry.default)
     end
 
     if optargument.key then
@@ -172,7 +173,7 @@ return function()
   end
 
   function cli:redefine_default(key, new_default)
-    local entry = lookup(key, key, optional)
+    local entry = optargument.key == key and optargument or lookup(key, key, required, optional)
 
     assert(entry, "Unrecognized option with the key '" .. key .. "'")
 
@@ -182,7 +183,11 @@ return function()
       validate_default_for_option(key, new_default)
     end
 
-    entry.default = new_default
+    entry.default = shallow_copy(new_default)
+  end
+
+  function cli:load_defaults(config)
+    config_injector.from_object(self, config)
   end
 
   --- Define a required argument.
@@ -465,7 +470,7 @@ return function()
             key = entry.expanded_key
           end
 
-          status, err = entry.callback(key, values[entry], altkey, curr_opt)
+          status, err = entry.callback(key, value, altkey, curr_opt)
 
           if status == nil and err then
             if err == signals.SIGNAL_RESTART then

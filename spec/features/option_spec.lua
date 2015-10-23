@@ -175,7 +175,7 @@ describe("cliargs - options", function()
 
     it('rejects everything else', function()
       assert.error_matches(function()
-        cli:add_option('--sources=VALUE', '...', { 'asdf' })
+        cli:add_option('--sources=VALUE', '...', function() end)
       end, 'expected a string, a number, nil, or {}')
     end)
   end)
@@ -199,6 +199,20 @@ describe("cliargs - options", function()
         assert.equal(call_args[1][1], 'compress')
         assert.equal(call_args[1][2], 'lzma')
         assert.equal(call_args[1][3], 'c')
+      end)
+
+      it('invokes the callback with the latest value when the option is a list', function()
+        cli:add_option('--tags=VALUE', '...', {}, capture)
+
+        helpers.parse(cli, '--tags only --tags foo')
+
+        assert.equal(call_args[1][1], 'tags')
+        assert.equal(call_args[1][2], 'only')
+        assert.equal(call_args[1][3], nil)
+
+        assert.equal(call_args[2][1], 'tags')
+        assert.equal(call_args[2][2], 'foo')
+        assert.equal(call_args[2][3], nil)
       end)
     end)
 
