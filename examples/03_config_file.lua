@@ -1,37 +1,51 @@
-local cli = require('cliargs')
-local config_injector = require('cliargs.config_injector')
+local cli = require 'cliargs'
+local tablex = require 'pl.tablex' -- we'll need this for merging tables
+local args
 
--- The config injector supports loading runtime-config from different sources,
--- like a JSON file, a YAML file, or an INI file.
+cli:add_option('--config=FILEPATH', 'path to a config file', '.programrc')
+cli:add_flag('--quiet', 'Do not output anything to STDOUT', false)
+
+-- This example shows how to read default values from a base configuration file
+-- and optionally, if the user passes in a custom config file using --config
+-- we merge those with the parsed ones.
+
+local function load_config_file(file_path)
+  local config = {}
+  local success = pcall(function()
+    config = loadfile(file_path)()
+  end)
+
+  if success then
+    return config
+  end
+end
+
+-- first, let's load from a ".programrc" file in the current-working directory
+-- if it exists and tell cliargs to use the defaults specified in that file:
+local base_config = load_config_file('.programrc')
+
+if base_config then
+  cli:load_defaults(base_config)
+end
+
+-- now we parse the options like usual:
+args = cli:parse()
+
+-- finally, let's check if the user passed in a config file using --config:
+if args.config then
+  local custom_config = load_config_file(args.config)
+
+  if custom_config then
+    -- We merge the user defaults with the run-time ones. Note that run-time
+    -- arguments should always have precedence over config defined in files.
+    args = tablex.merge({}, custom_config, args, true)
+  end
+end
+
+-- args is now ready for use:
+-- args.quiet will be whatever was set in the following priority:
 --
--- You can also define your own loading routine, of course. See below.
-
--- load options from a JSON file:
-local function inject_config_from_json(_, filepath)
-  return config_injector.from_json(cli, filepath)
-end
-
--- load options from a YAML file:
-local function inject_config_from_yaml(_, filepath)
-  return config_injector.from_yaml(cli, filepath)
-end
-
--- load options from an INI file:
-local function inject_config_from_ini(_, filepath)
-  return config_injector.from_ini(cli, filepath)
-end
-
-local function inject_config_from_custom_source(_, filepath)
-  -- do what you need to do to get the config object
-  -- then call the injector's "from_object" routine:
-  local runtime_config = {}
-
-  return config_injector.from_object(cli, runtime_config)
-end
-
-cli:add_option(
-  '--config=FILEPATH',
-  'path to a config file',
-  '.programrc',
-  inject_config_from_json
-)
+-- 1. --quiet or --no-quiet on the CLI
+-- 2. ["quiet"] in the user config file if --config was present
+-- 3. ["quiet"] in the base config file (.programrc) if it existed
+print(args.quiet)

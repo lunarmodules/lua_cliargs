@@ -1,6 +1,5 @@
 local helpers = require "spec_helper"
 local printer = require "cliargs.printer"
-local signals = require "cliargs.signals"
 
 describe("cliargs::core", function()
   local cli
@@ -178,25 +177,25 @@ describe("cliargs::core", function()
     end)
   end)
 
-  describe('emitting SIGNAL_RESTART during #parse', function()
-    it('restarts the parsing routine', function()
-      local parse_spy = spy.on(cli, 'parse')
-      local injected = false
+  describe('#load_defaults', function()
+    it('works', function()
+      cli:add_option('-c, --compress=VALUE', '...', 'lzma')
+      cli:add_flag('-q, --quiet', '...', false)
 
-      cli:add_option('--config=FILEPATH', '...', nil, function()
-        if not injected then
-          injected = true
-          return nil, signals.SIGNAL_RESTART
-        end
-      end)
+      cli:load_defaults({
+        compress = 'bz2',
+        quiet = true
+      })
 
-      cli:parse({})
+      local args, err = cli:parse({})
 
-      assert.spy(parse_spy).called(1)
-
-      cli:parse({ '--config=.programrc' })
-
-      assert.spy(parse_spy).called(3)
+      assert.equal(err, nil)
+      assert.same(args, {
+        c = 'bz2',
+        compress = 'bz2',
+        q = true,
+        quiet = true
+      })
     end)
   end)
 end)

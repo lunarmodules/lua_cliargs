@@ -127,11 +127,6 @@ describe("integration: parsing", function()
       cli:add_flag('--quiet', '...')
     end)
 
-    -- TODO: i'm not sure what the original intent was behind this, but this
-    -- acts funny if we pass an option after the --
-    --
-    -- wasn't the -- supposed to mean "don't care about what's next and just
-    -- pass it on" ?
     it('works', function()
       local args = helpers.parse(cli, '--verbose -- --input -d')
 

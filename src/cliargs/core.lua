@@ -1,18 +1,11 @@
 -- luacheck: ignore 212
 
 local _
-
--- ------- --
--- Helpers --
--- ------- --
-
 local disect = require('cliargs.utils.disect')
 local disect_argument = require('cliargs.utils.disect_argument')
 local lookup = require('cliargs.utils.lookup')
 local shallow_copy = require('cliargs.utils.shallow_copy')
 local printer = require('cliargs.printer')
-local signals = require('cliargs.signals')
-local config_injector = require('cliargs.config_injector')
 
 local function is_callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
@@ -173,7 +166,7 @@ return function()
   end
 
   function cli:redefine_default(key, new_default)
-    local entry = optargument.key == key and optargument or lookup(key, key, required, optional)
+    local entry = optargument.key == key and optargument or lookup(key, key, optional)
 
     assert(entry, "Unrecognized option with the key '" .. key .. "'")
 
@@ -186,8 +179,11 @@ return function()
     entry.default = shallow_copy(new_default)
   end
 
+  --- Load default values from a table.
   function cli:load_defaults(config)
-    config_injector.from_object(self, config)
+    for k, v in pairs(config) do
+      self:redefine_default(k, v)
+    end
   end
 
   --- Define a required argument.
@@ -409,17 +405,14 @@ return function()
     local values = get_initial_values()
     local argument_delimiter_found = false
     local function consume()
-      table.remove(args, 1)
+      return table.remove(args, 1)
     end
 
     local argument_cursor = 0
 
     while #args > 0 do
-      local curr_opt = args[1]
-      local next_opt = args[2]
-      local symbol, key, value, flag_negated = disect_argument(args[1])
-
-      consume()
+      local curr_opt = consume()
+      local symbol, key, value, flag_negated = disect_argument(curr_opt)
 
       -- end-of-options indicator:
       if curr_opt == "--" then
@@ -450,8 +443,7 @@ return function()
           value = not flag_negated
         -- not a flag, value is in the next argument
         elseif not value then
-          value = next_opt
-          consume()
+          value = consume()
         end
 
         if type(entry.default) == 'table' then
@@ -473,11 +465,7 @@ return function()
           status, err = entry.callback(key, value, altkey, curr_opt)
 
           if status == nil and err then
-            if err == signals.SIGNAL_RESTART then
-              return self:parse(arguments)
-            else
-              return on_error(err)
-            end
+            return on_error(err)
           end
         end
 
