@@ -11,71 +11,71 @@ describe("cliargs - options", function()
   describe('defining options', function()
     it('requires a key', function()
       assert.error_matches(function()
-        cli:add_option()
+        cli:option()
       end, 'Key and description are mandatory arguments')
     end)
 
     it('requires a description', function()
       assert.error_matches(function()
-        cli:add_option('--url=URL')
+        cli:option('--url=URL')
       end, 'Key and description are mandatory arguments')
     end)
 
     it('works', function()
       assert.has_no_errors(function()
-        cli:add_option('--url=URL', '...')
+        cli:option('--url=URL', '...')
       end)
     end)
 
     it('rejects a duplicate option', function()
-      cli:add_option('--url=URL', '...')
+      cli:option('--url=URL', '...')
 
       assert.error_matches(function()
-        cli:add_option('--url=URL', '...')
+        cli:option('--url=URL', '...')
       end, 'Duplicate')
     end)
   end)
 
   it('works with only a short key: -u VALUE', function()
-    cli:add_option('-u VALUE', '...')
+    cli:option('-u VALUE', '...')
     assert.equal(helpers.parse(cli, '-u something').u, 'something')
   end)
 
   it('works with only an expanded key: --url=VALUE', function()
-    cli:add_option('--url=VALUE', '...')
+    cli:option('--url=VALUE', '...')
     assert.equal(helpers.parse(cli, '--url=something').url, 'something')
   end)
 
   it('works with only an expanded key using space as a delimiter: --url VALUE', function()
-    cli:add_option('--url VALUE', '...')
+    cli:option('--url VALUE', '...')
     assert.equal(helpers.parse(cli, '--url something').url, 'something')
   end)
 
   it('works with both: -u, --url=VALUE', function()
-    cli:add_option('-u, --url=VALUE', '...')
+    cli:option('-u, --url=VALUE', '...')
     assert.equal(helpers.parse(cli, '--url=something').url, 'something')
     assert.equal(helpers.parse(cli, '-u=something').url, 'something')
   end)
 
   it('works with both keys and no comma between them: -u --url VALUE', function()
-    cli:add_option('-u --url=VALUE', '...')
+    cli:option('-u --url=VALUE', '...')
     assert.equal(helpers.parse(cli, '--url something').url, 'something')
     assert.equal(helpers.parse(cli, '-u    something').url, 'something')
   end)
 
   context('given no value indicator (an implicit flag, e.g. --quiet)', function()
-    it('proxies to #add_flag', function()
-      stub(cli, 'add_flag')
+    it('proxies to #flag', function()
+      stub(cli, 'flag')
 
-      cli:add_option('-q', '...')
+      cli:option('-q', '...')
 
-      assert.stub(cli.add_flag).was.called();
+      assert.stub(cli.flag).was.called();
     end)
   end)
 
   describe('parsing', function()
     before_each(function()
-      cli:add_option('-s, --source=SOURCE', '...')
+      cli:option('-s, --source=SOURCE', '...')
     end)
 
     context('using a -short key and space as a delimiter', function()
@@ -108,7 +108,7 @@ describe("cliargs - options", function()
 
     context('for an option with a short key longer than 1 char', function()
       before_each(function()
-        cli:add_option('-Xassembler OPTIONS', '...')
+        cli:option('-Xassembler OPTIONS', '...')
       end)
 
       it('works', function()
@@ -119,7 +119,7 @@ describe("cliargs - options", function()
 
     context('given multiple values', function()
       before_each(function()
-        cli:add_option('-k, --key=OPTIONS', '...', {})
+        cli:option('-k, --key=OPTIONS', '...', {})
       end)
 
       it('works', function()
@@ -140,42 +140,48 @@ describe("cliargs - options", function()
         end, 'unknown')
       end)
     end)
+
+    it('bails if no value was passed', function()
+      assert.error_matches(function()
+        helpers.parse(cli, '-s')
+      end, "option %-s requires a value to be set")
+    end)
   end)
 
   describe('parsing with a default value', function()
     it('accepts a nil', function()
-      cli:add_option('--compress=VALUE', '...', nil)
+      cli:option('--compress=VALUE', '...', nil)
       assert.equal(helpers.parse(cli, '').compress, nil)
     end)
 
     it('accepts a string', function()
-      cli:add_option('--compress=VALUE', '...', 'lzma')
+      cli:option('--compress=VALUE', '...', 'lzma')
       assert.equal(helpers.parse(cli, '').compress, 'lzma')
     end)
 
     it('accepts a number', function()
-      cli:add_option('--count=VALUE', '...', 5)
+      cli:option('--count=VALUE', '...', 5)
       assert.equal(helpers.parse(cli, '').count, 5)
     end)
 
     it('accepts a boolean', function()
-      cli:add_option('--quiet=VALUE', '...', true)
+      cli:option('--quiet=VALUE', '...', true)
       assert.equal(helpers.parse(cli, '').quiet, true)
     end)
 
     it('accepts an empty table', function()
-      cli:add_option('--sources=VALUE', '...', {})
+      cli:option('--sources=VALUE', '...', {})
       assert.same(helpers.parse(cli, '').sources, {})
     end)
 
     it('lets me override/reset the default value', function()
-      cli:add_option('--compress=URL', '...', 'lzma')
+      cli:option('--compress=URL', '...', 'lzma')
       assert.equal(helpers.parse(cli, '--compress=').compress, nil)
     end)
 
     it('rejects everything else', function()
       assert.error_matches(function()
-        cli:add_option('--sources=VALUE', '...', function() end)
+        cli:option('--sources=VALUE', '...', function() end)
       end, 'expected a string, a number, nil, or {}')
     end)
   end)
@@ -190,7 +196,7 @@ describe("cliargs - options", function()
       before_each(function()
         call_args = {}
 
-        cli:add_option('-c, --compress=VALUE', '...', nil, capture)
+        cli:option('-c, --compress=VALUE', '...', nil, capture)
       end)
 
       it('invokes the callback when the option is parsed', function()
@@ -202,7 +208,7 @@ describe("cliargs - options", function()
       end)
 
       it('invokes the callback with the latest value when the option is a list', function()
-        cli:add_option('--tags=VALUE', '...', {}, capture)
+        cli:option('--tags=VALUE', '...', {}, capture)
 
         helpers.parse(cli, '--tags only --tags foo')
 
@@ -218,7 +224,7 @@ describe("cliargs - options", function()
 
     context('when the callback returns an error message', function()
       it('propagates the error', function()
-        cli:add_option('-c, --compress=VALUE', '...', nil, function()
+        cli:option('-c, --compress=VALUE', '...', nil, function()
           return nil, ">>> bad argument <<<"
         end)
 
@@ -232,8 +238,8 @@ describe("cliargs - options", function()
       before_each(function()
         call_args = {}
 
-        cli:add_option('-c, --compress=VALUE', '...', nil, capture)
-        cli:add_option('--input=PATH', '...', nil, capture)
+        cli:option('-c, --compress=VALUE', '...', nil, capture)
+        cli:option('--input=PATH', '...', nil, capture)
       end)
 
       it('invokes the callback for each option parsed', function()

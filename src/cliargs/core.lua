@@ -80,15 +80,15 @@ return function()
   -- Used internally to add an option
   local function really_add_option(k, expanded_key, v, label, desc, default, callback)
     local flag = (v == nil) -- no value, so it's a flag
-    local has_no_flag = flag and (expanded_key and expanded_key:find('^%[no%-]') ~= nil)
-    local ek = has_no_flag and expanded_key:sub(6) or expanded_key
+    local negatable = flag and (expanded_key and expanded_key:find('^%[no%-]') ~= nil)
+    local ek = negatable and expanded_key:sub(6) or expanded_key
 
     -- guard against duplicates
     if lookup(k, ek, optional) then
       error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
     end
 
-    if has_no_flag and lookup(nil, "no-"..ek, optional) then
+    if negatable and lookup(nil, "no-"..ek, optional) then
       error("Duplicate option: " .. ("no-"..ek) .. ", please rename one of them.")
     end
 
@@ -100,7 +100,7 @@ return function()
       default = default,
       label = label,
       flag = flag,
-      has_no_flag = has_no_flag,
+      negatable = negatable,
       callback = callback,
       __display_key = ek or k
     }
@@ -213,7 +213,7 @@ return function()
   --- `args["ROOT"]`:
   ---
   ---     cli:argument("ROOT", "path to where root scripts can be found")
-  function cli:add_argument(key, desc, callback)
+  function cli:argument(key, desc, callback)
     assert(type(key) == "string" and type(desc) == "string",
       "Key and description are mandatory arguments (Strings)"
     )
@@ -249,7 +249,7 @@ return function()
   --- The following will parse the argument (if specified) and set its value in `args["root"]`:
   --- `cli:add_arg("root", "path to where root scripts can be found", "", 2)`
   --- The value returned will be a table with at least 1 entry and a maximum of 2 entries
-  function cli:optarg(key, desc, default, maxcount, callback)
+  function cli:splat(key, desc, default, maxcount, callback)
     assert(optargument.key == nil,
       "Only one splat argument may be defined."
     )
@@ -313,7 +313,7 @@ return function()
   --- with a default value of `file.txt`:
   ---
   ---     cli:option("-i, --input=FILE", "path to the input file", "file.txt")
-  function cli:add_option(key, desc, default, callback)
+  function cli:option(key, desc, default, callback)
     assert(type(key) == "string" and type(desc) == "string",
       "Key and description are mandatory arguments (Strings)"
     )
@@ -329,7 +329,7 @@ return function()
     --
     --     cli:option('-q, --quiet', '...')
     if v == nil then
-      return self:add_flag(key, desc, default, callback)
+      return self:flag(key, desc, default, callback)
     end
 
     validate_default_for_option(key, default)
@@ -345,7 +345,7 @@ return function()
   -- 2. **desc**: a description of the argument to be displayed in the help listing
   -- 3. **default**: *optional*; specify a default value (the default is nil)
   -- 4. **callback**: *optional*; specify a function to call when this flag is parsed (the default is nil)
-  function cli:add_flag(key, desc, default, callback)
+  function cli:flag(key, desc, default, callback)
     if type(default) == "function" then
       callback = default
       default = nil
@@ -437,18 +437,42 @@ return function()
           return on_error("unknown/bad " .. option_type .. ": " .. curr_opt)
         end
 
-        if flag_negated and not entry.has_no_flag then
-          return on_error("flag '" .. entry.__display_key .. "' may not be negated using --no-")
+        if flag_negated and not entry.negatable then
+          return on_error("flag '" .. curr_opt .. "' may not be negated using --no-")
         end
 
         -- a flag and a value specified? that's an error
-        if entry.flag and value then
-          return on_error("flag --" .. key .. " does not take a value")
-        elseif entry.flag then
+        if entry.flag then
+          if value then
+            return on_error("flag " .. curr_opt .. " does not take a value")
+          end
+
           value = not flag_negated
-        -- not a flag, value is in the next argument
-        elseif not value then
-          value = consume()
+        -- an option:
+        else
+          -- the value might be in the next argument, e.g:
+          --
+          --     --compress lzma
+          if not value then
+            -- if the option contained a = and there's no value, it means they
+            -- want to nullify an option's default value. eg:
+            --
+            --    --compress=
+            if not curr_opt:find('=') then
+              -- NOTE: this has the potential to be buggy and swallow the next
+              -- entry as this entry's value even though that entry may be an
+              -- actual argument/option
+              --
+              -- this would be a user error and there is no determinate way to
+              -- figure it out because if there's no leading symbol (- or --)
+              -- in that entry it can be an actual argument. :shrug:
+              value = consume()
+
+              if not value then
+                return on_error("option " .. curr_opt .. " requires a value to be set")
+              end
+            end
+          end
         end
 
         if type(entry.default) == 'table' then
@@ -474,15 +498,12 @@ return function()
           end
         end
 
-      -- an argument:
+      -- an argument or a splat argument:
       else
         argument_cursor = argument_cursor + 1
 
-        local curr_arg = required[argument_cursor]
-        local entry = curr_arg
-
-        -- splat arg
-        if not curr_arg then
+        -- a splat argument:
+        if not required[argument_cursor] then
           if optargument.maxcount > 1 then
             table.insert(values[optargument], curr_opt)
           else
@@ -495,8 +516,10 @@ return function()
               return on_error(err)
             end
           end
-        -- regular arg
+        -- a regular argument:
         else
+          local entry = required[argument_cursor]
+
           values[entry] = curr_opt
 
           if entry.callback then

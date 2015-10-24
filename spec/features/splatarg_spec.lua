@@ -11,39 +11,39 @@ describe("cliargs - splat arguments", function()
   describe('defining the splat arg', function()
     it('works', function()
       assert.has_no_error(function()
-        cli:optarg('SPLAT', 'some repeatable arg')
+        cli:splat('SPLAT', 'some repeatable arg')
       end)
     end)
 
     it('requires a key', function()
       assert.error_matches(function()
-        cli:optarg()
+        cli:splat()
       end, 'Key and description are mandatory arguments')
     end)
 
     it('requires a description', function()
       assert.error_matches(function()
-        cli:optarg('SPLAT')
+        cli:splat('SPLAT')
       end, 'Key and description are mandatory arguments')
     end)
 
     it('rejects multiple definitions', function()
-      cli:optarg('SPLAT', 'some repeatable arg')
+      cli:splat('SPLAT', 'some repeatable arg')
 
       assert.error_matches(function()
-        cli:optarg('SOME_SPLAT', 'some repeatable arg')
+        cli:splat('SOME_SPLAT', 'some repeatable arg')
       end, 'Only one splat')
     end)
   end)
 
   describe('default value', function()
     it('allows me to define a default value', function()
-      cli:optarg('SPLAT', 'some repeatable arg', 'foo')
+      cli:splat('SPLAT', 'some repeatable arg', 'foo')
     end)
 
     context('when only 1 occurrence is allowed', function()
       before_each(function()
-        cli:optarg('SPLAT', 'some repeatable arg', 'foo')
+        cli:splat('SPLAT', 'some repeatable arg', 'foo')
       end)
 
       it('uses the default value when nothing is passed in', function()
@@ -53,7 +53,7 @@ describe("cliargs - splat arguments", function()
 
     context('when more than 1 occurrence is allowed', function()
       before_each(function()
-        cli:optarg('SPLAT', 'some repeatable arg', 'foo', 3)
+        cli:splat('SPLAT', 'some repeatable arg', 'foo', 3)
       end)
 
       it('uses the default value only once when nothing is passed in', function()
@@ -69,12 +69,12 @@ describe("cliargs - splat arguments", function()
   describe('repetition count', function()
     it('accepts a repetition count', function()
       assert.has_no_error(function()
-        cli:optarg('SPLAT', 'some repeatable arg', nil, 2)
+        cli:splat('SPLAT', 'some repeatable arg', nil, 2)
       end)
     end)
 
     it('appends the values to a list', function()
-      cli:optarg('SPLAT', 'some repeatable arg', nil, 2)
+      cli:splat('SPLAT', 'some repeatable arg', nil, 2)
       local args = helpers.parse(cli, 'a b')
 
       assert.equal(#args.SPLAT, 2)
@@ -83,7 +83,7 @@ describe("cliargs - splat arguments", function()
     end)
 
     it('bails if more values were passed than acceptable', function()
-      cli:optarg('SPLAT', 'foobar', nil, 2)
+      cli:splat('SPLAT', 'foobar', nil, 2)
 
       assert.error_matches(function()
         helpers.parse(cli, 'a b c')
@@ -93,7 +93,7 @@ describe("cliargs - splat arguments", function()
 
   context("given a splatarg as the only argument/option", function()
     it("works", function()
-      cli:optarg('SPLAT', 'foobar', nil, 1)
+      cli:splat('SPLAT', 'foobar', nil, 1)
 
       local args = helpers.parse(cli, 'asdf')
 
@@ -106,7 +106,7 @@ describe("cliargs - splat arguments", function()
     it('invokes the callback every time a value for the splat arg is parsed', function()
       local call_args = {}
 
-      cli:optarg('SPLAT', 'foobar', nil, 2, function(_, value)
+      cli:splat('SPLAT', 'foobar', nil, 2, function(_, value)
         table.insert(call_args, value)
       end)
 

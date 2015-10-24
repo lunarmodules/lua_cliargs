@@ -21,7 +21,7 @@ describe('printer', function()
     end)
 
     it('works with 1 argument', function()
-      cli:add_argument('INPUT', 'path to the input file')
+      cli:argument('INPUT', 'path to the input file')
 
       assert_msg [==[
         Usage: [--] INPUT
@@ -29,8 +29,8 @@ describe('printer', function()
     end)
 
     it('works with 2+ arguments', function()
-      cli:add_argument('INPUT', '...')
-      cli:add_argument('OUTPUT', '...')
+      cli:argument('INPUT', '...')
+      cli:argument('OUTPUT', '...')
 
       assert_msg [==[
         Usage: [--] INPUT OUTPUT
@@ -43,7 +43,7 @@ describe('printer', function()
     end)
 
     it('prints options', function()
-      cli:add_option('--foo=VALUE', '...')
+      cli:option('--foo=VALUE', '...')
 
       assert_msg [==[
         Usage: [OPTIONS]
@@ -51,7 +51,7 @@ describe('printer', function()
     end)
 
     it('prints flags', function()
-      cli:add_flag('--foo', '...')
+      cli:flag('--foo', '...')
 
       assert_msg [==[
         Usage: [OPTIONS]
@@ -59,7 +59,7 @@ describe('printer', function()
     end)
 
     it('prints a splat arg with reptitions == 1', function()
-      cli:optarg('OUTPUT', '...', nil, 1)
+      cli:splat('OUTPUT', '...', nil, 1)
 
       assert_msg [==[
         Usage: [--] [OUTPUT]
@@ -67,7 +67,7 @@ describe('printer', function()
     end)
 
     it('prints a splat arg with reptitions == 2', function()
-      cli:optarg('OUTPUT', '...', nil, 2)
+      cli:splat('OUTPUT', '...', nil, 2)
 
       assert_msg [==[
         Usage: [--] [OUTPUT-1 [OUTPUT-2]]
@@ -75,7 +75,7 @@ describe('printer', function()
     end)
 
     it('prints a splat arg with reptitions > 2', function()
-      cli:optarg('OUTPUT', '...', nil, 5)
+      cli:splat('OUTPUT', '...', nil, 5)
 
       assert_msg [==[
         Usage: [--] [OUTPUT-1 [OUTPUT-2 [...]]]
@@ -95,7 +95,7 @@ describe('printer', function()
     end)
 
     it('works with 1 argument', function()
-      cli:add_argument('INPUT', 'path to the input file')
+      cli:argument('INPUT', 'path to the input file')
 
       assert_msg [==[
         ARGUMENTS:
@@ -104,8 +104,8 @@ describe('printer', function()
     end)
 
     it('works with 2+ arguments', function()
-      cli:add_argument('INPUT', 'path to the input file')
-      cli:add_argument('OUTPUT', 'path to the output file')
+      cli:argument('INPUT', 'path to the input file')
+      cli:argument('OUTPUT', 'path to the output file')
 
       assert_msg [==[
         ARGUMENTS:
@@ -115,7 +115,7 @@ describe('printer', function()
     end)
 
     it('works with 1 option', function()
-      cli:add_option('--compress=VALUE', 'compression algorithm to use')
+      cli:option('--compress=VALUE', 'compression algorithm to use')
 
       assert_msg [==[
         OPTIONS:
@@ -124,7 +124,7 @@ describe('printer', function()
     end)
 
     it("prints an option's default value", function()
-      cli:add_option('--compress=VALUE', 'compression algorithm to use', 'lzma')
+      cli:option('--compress=VALUE', 'compression algorithm to use', 'lzma')
 
       assert_msg [==[
         OPTIONS:
@@ -133,7 +133,7 @@ describe('printer', function()
     end)
 
     it("prints a repeatable option", function()
-      cli:add_option('--compress=VALUE', 'compression algorithm to use', { 'lzma' })
+      cli:option('--compress=VALUE', 'compression algorithm to use', { 'lzma' })
 
       assert_msg [==[
         OPTIONS:
@@ -142,8 +142,8 @@ describe('printer', function()
     end)
 
     it('works with many options', function()
-      cli:add_option('--compress=VALUE', 'compression algorithm to use')
-      cli:add_option('-u, --url=URL', '...')
+      cli:option('--compress=VALUE', 'compression algorithm to use')
+      cli:option('-u, --url=URL', '...')
 
       assert_msg [==[
         OPTIONS:
@@ -154,7 +154,7 @@ describe('printer', function()
 
     context('given a flag', function()
       it('prints it under OPTIONS', function()
-        cli:add_flag('-q, --quiet', '...')
+        cli:flag('-q, --quiet', '...')
 
         assert_msg [==[
           OPTIONS:
@@ -165,7 +165,7 @@ describe('printer', function()
 
     context('given a flag with a default value but is not negatable', function()
       it('does not print "on" or "off"', function()
-        cli:add_flag('--quiet', '...', true)
+        cli:flag('--quiet', '...', true)
 
         assert_msg [==[
           OPTIONS:
@@ -176,8 +176,8 @@ describe('printer', function()
 
     context('given a negatable flag', function()
       it('prints it along with its default value', function()
-        cli:add_flag('--[no-]quiet', '...', true)
-        cli:add_flag('--[no-]debug', '...', false)
+        cli:flag('--[no-]quiet', '...', true)
+        cli:flag('--[no-]debug', '...', false)
 
         assert_msg [==[
           OPTIONS:
@@ -189,7 +189,7 @@ describe('printer', function()
 
     context('given a splat arg', function()
       it('prints it with a repetition of 1', function()
-        cli:optarg("INPUTS", "directories to read from")
+        cli:splat("INPUTS", "directories to read from")
         assert_msg [==[
           ARGUMENTS:
             INPUTS directories to read from (optional)
@@ -197,7 +197,7 @@ describe('printer', function()
       end)
 
       it('prints it with a repetition of > 1', function()
-        cli:optarg("INPUTS", "directories to read from", nil, 3)
+        cli:splat("INPUTS", "directories to read from", nil, 3)
         assert_msg [==[
           ARGUMENTS:
             INPUTS directories to read from (optional)
@@ -205,7 +205,7 @@ describe('printer', function()
       end)
 
       it('prints it without a default value', function()
-        cli:optarg("INPUTS", "directories to read from")
+        cli:splat("INPUTS", "directories to read from")
         assert_msg [==[
           ARGUMENTS:
             INPUTS directories to read from (optional)
@@ -213,7 +213,7 @@ describe('printer', function()
       end)
 
       it('prints it with a default value', function()
-        cli:optarg("INPUTS", "directories to read from", 'foo')
+        cli:splat("INPUTS", "directories to read from", 'foo')
         assert_msg [==[
           ARGUMENTS:
             INPUTS directories to read from (optional, default: foo)
@@ -234,10 +234,10 @@ describe('printer', function()
     end)
 
     it('works', function()
-      cli:add_argument('OUTPUT', '...')
-      cli:optarg('INPUTS', '...', nil, 100)
-      cli:add_option('-c, --compress=VALUE', '...')
-      cli:add_flag('-q, --quiet', '...', true)
+      cli:argument('OUTPUT', '...')
+      cli:splat('INPUTS', '...', nil, 100)
+      cli:option('-c, --compress=VALUE', '...')
+      cli:flag('-q, --quiet', '...', true)
 
       assert.equal(trim [==[
         ======= Provided command line =============
@@ -261,12 +261,12 @@ describe('printer', function()
     end)
 
     it('does not fail with an optarg of 1 reptitions', function()
-      cli:optarg('INPUTS', '...', nil, 1)
+      cli:splat('INPUTS', '...', nil, 1)
       cli.printer.dump_internal_state({})
     end)
 
     it('does not fail with an optarg of many reptitions', function()
-      cli:optarg('INPUTS', '...', nil, 5)
+      cli:splat('INPUTS', '...', nil, 5)
       cli.printer.dump_internal_state({})
     end)
   end)

@@ -121,7 +121,7 @@ local function create_printer(get_parser_state)
         if not entry.flag and entry.default and #tostring(entry.default) > 0 then
           local readable_default = type(entry.default) == "table" and "[]" or tostring(entry.default)
           desc = desc .. " (default: " .. readable_default .. ")"
-        elseif entry.flag and entry.has_no_flag then
+        elseif entry.flag and entry.negatable then
           local readable_default = entry.default and 'on' or 'off'
           desc = desc .. " (default: " .. readable_default .. ")"
         end

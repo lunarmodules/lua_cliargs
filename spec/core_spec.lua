@@ -27,7 +27,7 @@ describe("cliargs::core", function()
       it('uses the global _G["arg"] one', function()
         _G["arg"] = {"--quiet"}
 
-        cli:add_option('--quiet', '...')
+        cli:option('--quiet', '...')
         local args = cli:parse()
 
         assert.equal(args.quiet, true)
@@ -36,7 +36,7 @@ describe("cliargs::core", function()
 
     it('does not mutate the argument table', function()
       local arguments = { "--quiet" }
-      cli:add_option('--quiet', '...')
+      cli:option('--quiet', '...')
 
       cli:parse(arguments)
 
@@ -46,8 +46,8 @@ describe("cliargs::core", function()
 
     describe('displaying the help listing', function()
       before_each(function()
-        cli:add_argument('INPUT', '...')
-        cli:add_flag('--quiet', '...')
+        cli:argument('INPUT', '...')
+        cli:flag('--quiet', '...')
         stub(cli, 'print_help')
       end)
 
@@ -105,7 +105,7 @@ describe("cliargs::core", function()
       end)
 
       it("does not print errors to STDOUT", function()
-        cli:add_option("ARGUMENT", '...')
+        cli:option("ARGUMENT", '...')
 
         local args = { "arg1", "arg2" } -- should fail for too many arguments
         local res, err = cli:parse(args)
@@ -124,10 +124,10 @@ describe("cliargs::core", function()
       cli:set_silent(false)
       cli:set_error_handler(function(msg) error(msg) end)
 
-      cli:add_argument('OUTPUT', '...')
-      cli:optarg('INPUTS', '...', nil, 5)
-      cli:add_option('-c, --compress=VALUE', '...')
-      cli:add_flag('-q, --quiet', '...', true)
+      cli:argument('OUTPUT', '...')
+      cli:splat('INPUTS', '...', nil, 5)
+      cli:option('-c, --compress=VALUE', '...')
+      cli:flag('-q, --quiet', '...', true)
 
       assert.error_matches(function()
         cli:parse({'--__DUMP__', '/tmp/out', '/tmp/in.1', '/tmp/in.2', '/tmp/in.3' })
@@ -137,7 +137,7 @@ describe("cliargs::core", function()
 
   describe('#redefine_default', function()
     it('allows me to change the default for an optargument', function()
-      cli:optarg('ROOT', '...', 'foo')
+      cli:splat('ROOT', '...', 'foo')
       assert.equal(cli:parse({}).ROOT, 'foo')
 
       cli:redefine_default('ROOT', 'bar')
@@ -145,7 +145,7 @@ describe("cliargs::core", function()
     end)
 
     it('allows me to change the default for an option', function()
-      cli:add_option('-c, --compress=VALUE', '...', 'lzma')
+      cli:option('-c, --compress=VALUE', '...', 'lzma')
       assert.equal(cli:parse({}).compress, 'lzma')
 
       cli:redefine_default('compress', 'bz2')
@@ -153,7 +153,7 @@ describe("cliargs::core", function()
     end)
 
     it('allows me to change the default for a flag', function()
-      cli:add_flag('-q, --quiet', '...', false)
+      cli:flag('-q, --quiet', '...', false)
       assert.equal(cli:parse({}).quiet, false)
 
       cli:redefine_default('quiet', true)
@@ -161,7 +161,7 @@ describe("cliargs::core", function()
     end)
 
     it('validates the new default value for an option', function()
-      cli:add_option('-c VALUE', '...', 'lzma')
+      cli:option('-c VALUE', '...', 'lzma')
 
       assert.error_matches(function()
         cli:redefine_default('c', function() end)
@@ -169,7 +169,7 @@ describe("cliargs::core", function()
     end)
 
     it('validates the new default value for a flag', function()
-      cli:add_option('-q', '...', true)
+      cli:option('-q', '...', true)
 
       assert.error_matches(function()
         cli:redefine_default('q', 'break break break')
@@ -179,8 +179,8 @@ describe("cliargs::core", function()
 
   describe('#load_defaults', function()
     it('works', function()
-      cli:add_option('-c, --compress=VALUE', '...', 'lzma')
-      cli:add_flag('-q, --quiet', '...', false)
+      cli:option('-c, --compress=VALUE', '...', 'lzma')
+      cli:flag('-q, --quiet', '...', false)
 
       cli:load_defaults({
         compress = 'bz2',

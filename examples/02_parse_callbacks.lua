@@ -19,7 +19,7 @@ local function print_version()
 end
 
 cli:set_name("try_my_version.lua")
-cli:add_flag("-v, --version", "prints the program's version and exits", print_version)
+cli:flag("-v, --version", "prints the program's version and exits", print_version)
 
 -- Parses from _G['arg']
 local args = cli:parse()

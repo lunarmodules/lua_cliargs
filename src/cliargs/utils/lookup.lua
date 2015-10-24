@@ -13,7 +13,7 @@ local function lookup(k, ek, ...)
         return entry
       end
 
-      if entry.has_no_flag then
+      if entry.negatable then
         if ek and ("no-"..entry.expanded_key) == ek then return entry end
       end
     end

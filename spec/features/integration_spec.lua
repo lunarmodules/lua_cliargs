@@ -13,8 +13,8 @@ describe("integration: parsing", function()
 
   context('given a set of arguments', function()
     it('works when all are passed in', function()
-      cli:add_argument('FOO', '...')
-      cli:add_argument('BAR', '...')
+      cli:argument('FOO', '...')
+      cli:argument('BAR', '...')
 
       local args = helpers.parse(cli, 'foo bar')
 
@@ -24,8 +24,8 @@ describe("integration: parsing", function()
 
   context('given an argument and a splat', function()
     before_each(function()
-      cli:add_argument('FOO', '...')
-      cli:optarg('BAR', '...', nil, 2)
+      cli:argument('FOO', '...')
+      cli:splat('BAR', '...', nil, 2)
     end)
 
     it('works when only the argument is passed in', function()
@@ -49,8 +49,8 @@ describe("integration: parsing", function()
 
   context('given a set of options', function()
     it('works when nothing is passed in', function()
-      cli:add_option('--foo FOO', '...')
-      cli:add_option('--bar BAR', '...')
+      cli:option('--foo FOO', '...')
+      cli:option('--bar BAR', '...')
 
       local args = helpers.parse(cli, '')
 
@@ -58,8 +58,8 @@ describe("integration: parsing", function()
     end)
 
     it('works when they are passed in', function()
-      cli:add_option('-f, --foo FOO', '...')
-      cli:add_option('--bar BAR', '...')
+      cli:option('-f, --foo FOO', '...')
+      cli:option('--bar BAR', '...')
 
       local args = helpers.parse(cli, '-f something --bar=BAZ')
 
@@ -73,9 +73,9 @@ describe("integration: parsing", function()
 
   context('given arguments, options, and flags', function()
     before_each(function()
-      cli:add_argument('FOO', '...')
-      cli:add_option('--input=SOURCE', '...')
-      cli:add_flag('--quiet', '...')
+      cli:argument('FOO', '...')
+      cli:option('--input=SOURCE', '...')
+      cli:flag('--quiet', '...')
     end)
 
     it('works when nothing but arguments are passed in', function()
@@ -121,10 +121,10 @@ describe("integration: parsing", function()
 
   describe('using -- to separate options from arguments', function()
     before_each(function()
-      cli:add_argument('INPUT', '...')
-      cli:optarg('OUTPUT', '...', nil, 1)
-      cli:add_flag('--verbose', '...')
-      cli:add_flag('--quiet', '...')
+      cli:argument('INPUT', '...')
+      cli:splat('OUTPUT', '...', nil, 1)
+      cli:flag('--verbose', '...')
+      cli:flag('--quiet', '...')
     end)
 
     it('works', function()

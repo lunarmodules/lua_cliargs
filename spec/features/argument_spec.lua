@@ -11,40 +11,40 @@ describe("cliargs - arguments", function()
   describe('defining arguments', function()
     it('works', function()
       assert.has_no_errors(function()
-        cli:add_argument('PATH', 'path to a file')
+        cli:argument('PATH', 'path to a file')
       end)
     end)
 
     it('requires a key', function()
       assert.error_matches(function()
-        cli:add_argument()
+        cli:argument()
       end, 'Key and description are mandatory arguments')
     end)
 
     it('requires a description', function()
       assert.error_matches(function()
-        cli:add_argument('PATH')
+        cli:argument('PATH')
       end, 'Key and description are mandatory arguments')
     end)
 
     it('rejects a bad callback', function()
       assert.error_matches(function()
-        cli:add_argument('PATH', 'path to a file', 'lolol')
+        cli:argument('PATH', 'path to a file', 'lolol')
       end, 'Callback argument must be a function')
     end)
 
     it('rejects duplicate arguments', function()
-      cli:add_argument('PATH', 'path to a file')
+      cli:argument('PATH', 'path to a file')
 
       assert.error_matches(function()
-        cli:add_argument('PATH', '...')
+        cli:argument('PATH', '...')
       end, 'Duplicate argument')
     end)
   end)
 
   describe('parsing arguments', function()
     it('works with a single argument', function()
-      cli:add_argument('PATH', 'path to a file')
+      cli:argument('PATH', 'path to a file')
 
       local args = helpers.parse(cli, '/some/where')
 
@@ -52,8 +52,8 @@ describe("cliargs - arguments", function()
     end)
 
     it('works with multiple arguments', function()
-      cli:add_argument('INPUT', 'path to the input file')
-      cli:add_argument('OUTPUT', 'path to the output file')
+      cli:argument('INPUT', 'path to the input file')
+      cli:argument('OUTPUT', 'path to the output file')
 
       local args = helpers.parse(cli, '/some/where /some/where/else')
 
@@ -62,8 +62,8 @@ describe("cliargs - arguments", function()
     end)
 
     it('bails on missing arguments', function()
-      cli:add_argument('INPUT', 'path to the input file')
-      cli:add_argument('OUTPUT', 'path to the output file')
+      cli:argument('INPUT', 'path to the input file')
+      cli:argument('OUTPUT', 'path to the output file')
 
       assert.error_matches(function()
         helpers.parse(cli, '/some/where')
@@ -71,7 +71,7 @@ describe("cliargs - arguments", function()
     end)
 
     it('bails on too many arguments', function()
-      cli:add_argument('INPUT', 'path to the input file')
+      cli:argument('INPUT', 'path to the input file')
 
       assert.error_matches(function()
         helpers.parse(cli, 'foo bar')
@@ -91,7 +91,7 @@ describe("cliargs - arguments", function()
 
     context('given a single argument', function()
       before_each(function()
-        cli:add_argument('PATH', 'path to a file', capture)
+        cli:argument('PATH', 'path to a file', capture)
       end)
 
       it('invokes the callback when the argument is parsed', function()
@@ -105,8 +105,8 @@ describe("cliargs - arguments", function()
 
     context('given multiple arguments', function()
       before_each(function()
-        cli:add_argument('INPUT', '...', capture)
-        cli:add_argument('OUTPUT', '...', capture)
+        cli:argument('INPUT', '...', capture)
+        cli:argument('OUTPUT', '...', capture)
       end)
 
       it('invokes the callback for each argument parsed', function()

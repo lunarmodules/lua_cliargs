@@ -2,8 +2,8 @@ local cli = require 'cliargs'
 local tablex = require 'pl.tablex' -- we'll need this for merging tables
 local args
 
-cli:add_option('--config=FILEPATH', 'path to a config file', '.programrc')
-cli:add_flag('--quiet', 'Do not output anything to STDOUT', false)
+cli:option('--config=FILEPATH', 'path to a config file', '.programrc')
+cli:flag('--quiet', 'Do not output anything to STDOUT', false)
 
 -- This example shows how to read default values from a base configuration file
 -- and optionally, if the user passes in a custom config file using --config
