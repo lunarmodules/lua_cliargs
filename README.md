@@ -1,26 +1,20 @@
-# cliargs
+# lua_cliargs
 
 [![travis-ci status](https://secure.travis-ci.org/amireh/lua_cliargs.png)](http://travis-ci.org/#!/amireh/lua_cliargs/builds)
 
 cliargs is a command-line argument parser for Lua. It supports several types of arguments:
 
 1. required arguments
-1. optional arguments with different notations: `-short-key VALUE` and/or `--expanded-key=VALUE`
-2. optional arguments with multiple-values that get appended to a list
-1. optional "flag" arguments (on/off options) with notations: `-short-key` and/or `--expanded-key`
-1. a single optional "splat" argument which can be repeated (must be the last argument)
+2. optional arguments with different notations: `-short-key VALUE` and/or `--expanded-key=VALUE`
+3. optional arguments with multiple-values that get appended to a list
+4. optional "flag" arguments (on/off options) with notations: `-short-key` and/or `--expanded-key`
+5. a single optional "splat" argument which can be repeated (must be the last argument)
 
 Optional arguments can have default values (strings), flags always default to 'true'.
 
-## Usage Example
-See `example.lua` for an example on how to use the parser.
-Try it with the following sample command lines;
+## Usage Examples
 
-```
-example.lua --help
-example.lua -o myfile -d --compress=gzip inputfile
-example.lua --__DUMP__ -o myfile -d --compress=gzip inputfile
-```
+See the examples under the `examples/` directory.
 
 **Accessing arguments**
 
@@ -32,7 +26,7 @@ The `parse()`  method will parse the command line and return a table with result
 
 A help listing will be automatically generated and accessed using the `--help` argument. You can also force its display in the code using `cli:print_help()`.
 
-This is the result for our example (see examples/00_general.lua):
+This is the result for our example (see `examples/00_general.lua`):
 
 ```
 Usage: cli_example.lua [OPTIONS]  INPUT  [OUTPUT-1 [OUTPUT-2 [...]]]
