@@ -23,4 +23,21 @@ exports.parse = function(cli, str)
   return cli:parse(split(str, '%s+'))
 end
 
+exports.trim = function(s)
+  local lines = split(s, "\n")
+
+  if #lines == 0 then
+    return s
+  end
+
+  local padding = lines[1]:find('%S') or 0
+  local buffer = ''
+
+  for index, line in pairs(lines) do
+    buffer = buffer .. line:sub(padding, -1):gsub("%s+$", '') .. "\n"
+  end
+
+  return buffer:gsub("%s+$", '')
+end
+
 return exports

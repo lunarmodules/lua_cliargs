@@ -14,7 +14,7 @@ local cli = require "cliargs"
 
 -- this is called when the flag -v or --version is set
 local function print_version()
-  print("example.lua: version 1.2.1")
+  print(cli.name .. ": version 1.2.1")
   os.exit(0)
 end
 

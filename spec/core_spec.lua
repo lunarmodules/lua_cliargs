@@ -1,5 +1,4 @@
 local helpers = require "spec_helper"
-local printer = require "cliargs.printer"
 
 describe("cliargs::core", function()
   local cli
@@ -120,17 +119,18 @@ describe("cliargs::core", function()
 
   describe('#parse - the --__DUMP__ special option', function()
     it('dumps the state and errors out', function()
-      stub(printer, 'print')
+      stub(cli.printer, 'print')
 
       cli:set_silent(false)
       cli:set_error_handler(function(msg) error(msg) end)
 
-      cli:add_argument('INPUT', '...')
+      cli:add_argument('OUTPUT', '...')
+      cli:optarg('INPUTS', '...', nil, 5)
       cli:add_option('-c, --compress=VALUE', '...')
       cli:add_flag('-q, --quiet', '...', true)
 
       assert.error_matches(function()
-        cli:parse({'--__DUMP__', 'asdf'})
+        cli:parse({'--__DUMP__', '/tmp/out', '/tmp/in.1', '/tmp/in.2', '/tmp/in.3' })
       end, 'commandline dump created')
     end)
   end)

@@ -61,7 +61,7 @@ describe("cliargs - splat arguments", function()
       end)
 
       it('does not use the default value if something was passed in at least once', function()
-        assert.same(helpers.parse(cli, 'asdf').SPLAT, { 'asdf', nil, nil })
+        assert.same(helpers.parse(cli, 'asdf').SPLAT, { 'asdf' })
       end)
     end)
   end)

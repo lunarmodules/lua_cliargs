@@ -5,7 +5,7 @@ local disect = require('cliargs.utils.disect')
 local disect_argument = require('cliargs.utils.disect_argument')
 local lookup = require('cliargs.utils.lookup')
 local shallow_copy = require('cliargs.utils.shallow_copy')
-local printer = require('cliargs.printer')
+local create_printer = require('cliargs.printer')
 
 local function is_callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
@@ -35,15 +35,25 @@ end
 -- CLI Main --
 -- -------- --
 return function()
+  local cli = {}
   local required = {}
   local optional = {}
   local optargument = {maxcount = 0}
   local colsz = { 0, 0 } -- column width, help text. Set to 0 for auto detect
-  local name = ""
-  local description = ""
   local silent = false
 
-  local cli = {}
+  cli.name = ""
+  cli.description = ""
+  cli.printer = create_printer(function()
+    return {
+      name = cli.name,
+      description = cli.description,
+      required = required,
+      optional = optional,
+      optargument = optargument,
+      colsz = colsz
+    }
+  end)
 
   --- @property {function} custom_error_handler
   ---
@@ -55,13 +65,13 @@ return function()
 
   local function on_error(msg)
     if custom_error_handler then
-      return custom_error_handler(msg, { name = name })
+      return custom_error_handler(msg, { name = cli.name })
     end
 
-    local full_msg = name .. ": error: " .. msg .. '; re-run with --help for usage.'
+    local full_msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
 
     if not silent then
-      printer.print(full_msg)
+      cli.printer.print(full_msg)
     end
 
     return nil, full_msg
@@ -98,16 +108,6 @@ return function()
     table.insert(optional, entry)
   end
 
-  local function get_parser_state()
-    return {
-      name = name,
-      description = description,
-      required = required,
-      optional = optional,
-      optargument = optargument
-    }
-  end
-
   local function get_initial_values()
     local initial_values = {}
 
@@ -138,21 +138,26 @@ return function()
 
   --- Assigns the name of the program which will be used for logging.
   function cli:set_name(in_name)
-    name = in_name
+    cli.name = in_name
   end
 
   --- Write down a brief, 1-liner description of what the program does.
   function cli:set_description(in_description)
-    description = in_description
+    cli.description = in_description
   end
 
-  -- TODO: move to printer
-  --
-  --- Sets the amount of space allocated to the argument keys and descriptions in the help listing.
+  --- Sets the amount of space allocated to the argument keys and descriptions
+  --- in the help listing.
+  ---
   --- The sizes are used for wrapping long argument keys and descriptions.
-  --- ### Parameters
-  --- 1. **key_cols**: the number of columns assigned to the argument keys, set to 0 to auto detect (default: 0)
-  --- 1. **desc_cols**: the number of columns assigned to the argument descriptions, set to 0 to auto set the total width to 72 (default: 0)
+  ---
+  --- @param {number} [key_cols=0]
+  ---        The number of columns assigned to the argument keys, set to 0 to
+  ---        auto detect.
+  ---
+  --- @param {number} [desc_cols=0]
+  ---        The number of columns assigned to the argument descriptions, set to
+  ---        0 to auto set the total width to 72.
   function cli:set_colsz(key_cols, desc_cols)
     colsz = { key_cols or colsz[1], desc_cols or colsz[2] }
   end
@@ -550,9 +555,9 @@ return function()
     end
 
     if dump then
-      if not silent then
-        printer.dump_internal_state(get_parser_state(), values)
-      end
+      local msg = cli.printer.dump_internal_state(values)
+
+      cli.printer.print(msg)
 
       return on_error("commandline dump created as requested per '--__DUMP__' option")
     end
@@ -565,10 +570,10 @@ return function()
   --- @return {string}
   ---         The USAGE message.
   function cli:print_usage()
-    local msg = printer.generate_usage(get_parser_state())
+    local msg = cli.printer.generate_usage()
 
     if not silent then
-      printer.print(msg)
+      cli.printer.print(msg)
     end
 
     return msg
@@ -579,10 +584,13 @@ return function()
   --- @return {string}
   ---         The HELP message.
   function cli:print_help()
-    local msg = printer.generate_help(get_parser_state(), colsz)
+    local msg = ''
+
+    msg = msg .. cli.printer.generate_usage() .. '\n'
+    msg = msg .. cli.printer.generate_help()
 
     if not silent then
-      printer.print(msg)
+      cli.printer.print(msg)
     end
 
     return msg
