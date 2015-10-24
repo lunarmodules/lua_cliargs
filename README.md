@@ -16,11 +16,168 @@ Optional arguments can have default values (strings), flags always default to 't
 
 See the examples under the `examples/` directory.
 
+## API
+
+### `cli:argument(key: string, desc: string[, callback: fn])`
+
+Defines a required argument.
+
+Required arguments do not take a symbol like `-` or `--`, may not have a default value, and are parsed in the order they are defined.
+
+For example:
+
+```lua
+cli:argument('INPUT', 'path to the input file')
+cli:argument('OUTPUT', 'path to the output file')
+```
+
+At run-time, the arguments have to be specified using the following notation:
+
+```bash
+$ ./script.lua ./main.c ./a.out
+```
+
+If the user does not pass a value to _every_ argument, the parser will raise an error.
+
+### `cli:option(key: string, desc: string[, default: *, callback: fn])`
+
+Defines an optional argument.
+
+Options can be specified in a number of ways on the command-line. As an example, let's assume we have a `compress` option that may be one of `gzip` (default,) `lzma`, or something else:
+
+```lua
+cli:option('-c, --compress=VALUE', 'compression algorithm to use', 'gzip')
+```
+
+At run-time, the option may be specified using any of the following notations:
+
+```bash
+$ ./script.lua -c lzma
+$ ./script.lua -c=lzma
+$ ./script.lua --compress lzma
+$ ./script.lua --compress=lzma
+$ ./script.lua --compress= # this overrides the default of `gzip` to `nil`
+```
+
+### `cli:flag(key: string, desc: string[, default: *, callback: fn])`
+
+Defines an optional "flag" argument.
+
+Flags are a special subset of options that can either be `true` or `false`. 
+
+For example:
+
+```lua
+cli:flag('-q, --quiet', 'Suppress output.', true)
+```
+
+At run-time:
+
+```bash
+$ ./script.lua --quiet
+$ ./script.lua -q
+```
+
+Passing a value to a flag raises an error:
+
+```bash
+$ ./script.lua --quiet=foo
+$ echo $? # => 1
+```
+
+Flags may be _negatable_ by prepending `[no-]` to their key:
+
+```lua
+cli:flag('-c, --[no-]compress', 'whether to compress or not', true)
+```
+
+Now the user gets to pass `--no-compress` if they want to skip compression, or either specify `--compress` explicitly or leave it unspecified to use compression.
+
+### `cli:splat(key: string, desc: string[, default: *, maxcount: number, callback: fn])`
+
+Defines a "splat" (or catch-all) argument.
+
+This is a special kind of argument that may be specified 0 or more times, the values being appended to a list.
+
+For example, let's assume our program takes a single output file and works on multiple source files:
+
+```lua
+cli:argument('OUTPUT', 'path to the output file')
+cli:splat('INPUTS', 'the sources to compile', nil, 10) -- up to 10 source files
+```
+
+At run-time, it could be invoked as such:
+
+```bash
+$ ./script.lua ./a.out file1.c file2.c main.c
+```
+
+If you want to make the output optional, you could do something like this:
+
+```lua
+cli:option('-o, --output=FILE', 'path to the output file', './a.out')
+cli:splat('INPUTS', 'the sources to compile', nil, 10)
+```
+
+And now we may omit the output file path:
+
+```bash
+$ ./script.lua file1.c file2.c main.c
+```
+
+### `cli:parse(args: table) -> table`
+
+Parses the arguments table. This is the primary routine. The return value is a table containing all the arguments, options, flags, and splat arguments that were specified or had a default (where applicable).
+
+The table keys are the keys you used to define the arguments (both short and expanded notations like `-q` => `q` and `--quiet` => `quiet`).
+
+Example:
+
+```lua
+local args
+args = cli:parse() -- uses the global arguments table
+args = cli:parse({ '--some-option', 'arg' })
+```
+
 **Accessing arguments**
 
 All types of arguments must specify a *key*. In the case of required arguments, the keys are only used in the help listings. However, for optional arguments, they are mandatory (either *--key* or *--extended-key* must be specified, the other is optional).
 
-The `parse()`  method will parse the command line and return a table with results. Accessing argument or option values in this table can be done using the key with the leading dashes omitted (`-` or `--`). When defining an option (or a flag) , you can access it using either key or expanded-key; they'll both be defined.
+The `cli:parse()`  method will parse the command line and return a table with results. Accessing argument or option values in this table can be done using the key with the leading dashes omitted (`-` or `--`). When defining an option (or a flag) , you can access it using either key or expanded-key; they'll both be defined.
+
+See the examples for more on this.
+
+### `cli:print_help() -> string`
+
+Prints the help listing. This is automatically done if the user specifies `--help` as an argument at run-time.
+
+An example is shown in the help-listing section below.
+
+### `cli:print_usage() -> string`
+
+Prints a subset of the full help-listing showing only the usage/invocation format. For example:
+
+```
+Usage: cli_example.lua [OPTIONS]  INPUT  [OUTPUT-1 [OUTPUT-2 [...]]]
+```
+
+### `cli:set_name(name: string)`
+
+Allows you to specify a name for the program which will be used in the help listings and error messages.
+
+### `cli:set_description(desc: string)`
+
+Allows you to specify a short description of the program to display in the help listing.
+
+### `cli:set_colsz(key_columns: number, desc_columns: number)`
+
+Specifies the formatting options for the help listings.
+
+The first argument is how wide, in characters, should the first column that contains the keys/names of the arguments be.
+
+The second argument denotes how wide, in characters, should the second column that contains the argument descriptions be.
+
+By default, these are set to `0` which means cliargs will auto-detect the best column sizes. The description column will be capped to a width of 72 characters.
 
 ## Help listings `--help`
 
@@ -104,23 +261,44 @@ Many thanks to everyone who reported bugs, provided fixes, and added entirely ne
 
 *If I missed you, don't hesitate to update this file or just email me.*
 
-## Reference
-
-A function reference was generated using [LunaDoc](http://jgm.github.com/lunamark/lunadoc.1.html) which can be found [here](http://lua-cliargs.docs.mxvt.net).
-
 ## Changelog
 
-Changes from 2.5.1 to 2.5.2
+### Changes from 2.5.x 3.0
+
+This major version release contains BREAKING API CHANGES. See the UPGRADE guide for help in updating your code to make use of it.
+
+**More flexible parsing**
+
+- options can occur anywhere now even after arguments (unless the `--` indicator is specified, then no options are parsed afterwards.) Previously, options were accepted only before arguments.
+- options using the short-key notation can be specified using `=` as a value delimiter as well as a space (e.g. `-c=lzma` and `-c lzma`)
+- the library is now more flexible with option definitions (notations like `-key VALUE` or `--key=VALUE`)
+- `--help` or `-h` will now cause the help listing to be displayed no matter where they are (previously, it only happened if they were the first option)
+
+**Re-defining defaults**
+
+It is now possible to pass a table containing default values (and override any 
+existing defaults).
+
+The function for doing this is called `cli:load_defaults().`.
+
+This makes it possible to load run-time defaults from a configuration file, for example.
+
+**Other changes**
+
+- a new hook was introduced for installing a custom parse error handler: `cli:set_error_handler(fn: function)`. The default will invoke `error()`.
+- internal code changes and more comprehensive test-coverage
+
+### Changes from 2.5.1 to 2.5.2
 
 - No longer tracking the (legacy) tarballs in git or the luarocks package. Instead, we use the GitHub release tarballs for each version.
 
-Changes in 2.4.0 from 2.3-4
+### Changes in 2.4.0 from 2.3-4
 
 1. All arguments now accept a callback that will be invoked when parsing of those arguments was successful
 2. (**POSSIBLY BREAKING**) Default value for flags is now `nil` instead of `false`. This will only affect existing behavior if you were explicitly testing unset flags to equal `false` (i.e. `if flag == false then`) as opposed to `if flag then` (or `if not flag then`).
 3. Minor bugfixes
 
-Changes in 2.3.0
+### Changes in 2.3.0
 
 1. the parser will now understand `--` to denote the end of optional arguments and will map whatever comes after it to required/splat args
 2. `-short VALUE` is now properly supported, so is `-short=VALUE`
@@ -128,11 +306,11 @@ Changes in 2.3.0
 4. the parser now accepts callbacks that will be invoked as soon as options are parsed so that you can bail out of parsing preemptively (like for `--version` or `--help` options)
 5. options can now accept multiple values via multiple invocations if a table was provided as a default value (passed-in values will be appended to that list)
 
-Changes in 2.2-0 from 2.1-2
+### Changes in 2.2-0 from 2.1-2
 
 1. the `=` that separates keys from values in the `--expanded-key` notation is no longer mandatory; using either a space or a `=` will map the value to the key (e.g., `--compress lzma` is equal to `--compress=lzma`)
 
-Changes in 2.0.0 from 1.x.x
+### Changes in 2.0.0 from 1.x.x
 
 1. added the 'splat' argument, an optional repetitive argument for which a maximum number of occurrences can be set
 1. removed the reference, arguments are now solely returned by their key/expanded-key (BREAKING!)
