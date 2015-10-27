@@ -613,7 +613,7 @@ function cli:print_help(noprint)
   end
 
   if self.optargument.maxcount > 0 then
-    append(self.optargument.key, self.optargument.desc .. " (optional, default: " .. self.optargument.default .. ")")
+    append(self.optargument.key, self.optargument.desc .. " (optional, default: " .. tostring(self.optargument.default) .. ")")
   end
 
   if #self.optional > 0 then
