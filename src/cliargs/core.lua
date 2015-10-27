@@ -6,6 +6,7 @@ local disect_argument = require('cliargs.utils.disect_argument')
 local lookup = require('cliargs.utils.lookup')
 local shallow_copy = require('cliargs.utils.shallow_copy')
 local create_printer = require('cliargs.printer')
+local config_loader = require('cliargs.config_loader')
 
 local function is_callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
@@ -41,9 +42,11 @@ return function()
   local optargument = {maxcount = 0}
   local colsz = { 0, 0 } -- column width, help text. Set to 0 for auto detect
   local silent = false
+  local arbitraries = {}
 
   cli.name = ""
   cli.description = ""
+
   cli.printer = create_printer(function()
     return {
       name = cli.name,
@@ -218,7 +221,9 @@ return function()
   function cli:redefine_default(key, new_default)
     local entry = optargument.key == key and optargument or lookup(key, key, optional)
 
-    assert(entry, "Unrecognized option with the key '" .. key .. "'")
+    if not entry then
+      return nil
+    end
 
     if entry.flag then
       validate_default_for_flag(key, new_default)
@@ -227,13 +232,96 @@ return function()
     end
 
     entry.default = shallow_copy(new_default)
+
+    return true
   end
 
   --- Load default values from a table.
-  function cli:load_defaults(config)
+  ---
+  --- @param {table} config
+  ---        Your new set of defaults. The keys could either point to the short
+  ---        or expanded option keys, and their values are the new defaults.
+  ---
+  --- @param {boolean} [strict=false]
+  ---        Turn this on to raise an error if a key that was found in the table
+  ---        could not be mapped to any CLI option.
+  function cli:load_defaults(config, strict)
     for k, v in pairs(config) do
-      self:redefine_default(k, v)
+      if not self:redefine_default(k, v) then
+        if strict then
+          assert(false, "Unrecognized option with the key '" .. k .. "'")
+        else
+          arbitraries[k] = v
+        end
+      end
     end
+  end
+
+  --- Load default values from a configuration file.
+  ---
+  --- @param {string} path
+  ---        Absolute file path.
+  ---
+  --- @param {string} [format=nil]
+  ---        The config file format, which has to be one of:
+  ---        "lua", "json", "ini", or "yaml".
+  ---        When this is left blank, we try to auto-detect the format from the
+  ---        file extension.
+  ---
+  --- @param {boolean} [strict=false]
+  ---        Forwarded to [#load_defaults](). See that method for the parameter
+  ---        description.
+  ---
+  --- @return {true|union<nil, string>}
+  ---         Returns true on successful load. Otherwise, nil and an error
+  ---         message are returned instead.
+  function cli:load_defaults_from_file(path, format, strict)
+    if not format then
+      format = path:match('%.([^%.]+)$')
+    end
+
+    local loader = config_loader.FORMAT_LOADERS[format]
+
+    if not loader then
+      return nil, 'Unsupported file format "' .. format .. '"'
+    end
+
+    local config, err = config_loader[loader](path)
+
+    if err then
+      return nil, err
+    end
+
+    self:load_defaults(config, strict)
+
+    return true
+  end
+
+  --- When you load configuration files that may contain properties that do not
+  --- map to any CLI option, lua_cliargs will conveniently hold these for you
+  --- in a separate storage which you may access through this API.
+  ---
+  --- This is helpful if a config file contains parameters that are not exposed/
+  --- overridable through the CLI but you still want to access them all the
+  --- same.
+  ---
+  --- Please note that lua_cliargs is not responsible for merging these values
+  --- with the result-set of parsed CLI arguments when you call [#parse](), and
+  --- it is up to you to handle these properties in the manner appropriate to
+  --- your application.
+  ---
+  --- @example
+  ---
+  ---     cli:option('--compress=VALUE', '...', 'lzma')
+  ---     cli:load_defaults({
+  ---       compress = "bz2",
+  ---       sources = { "file1.c", "file2.c" }
+  ---     })
+  ---
+  ---     cli:parse({}) -- { "compress" = "bz2" }
+  ---     cli:get_arbitrary_options() -- { "sources" = { "file1.c", "file2.c" } }
+  function cli:get_arbitrary_options()
+    return arbitraries
   end
 
   --- Define a required argument.

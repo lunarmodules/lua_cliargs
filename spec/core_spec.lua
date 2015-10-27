@@ -197,5 +197,10 @@ describe("cliargs::core", function()
         quiet = true
       })
     end)
+
+    it('stores arbitrary options', function()
+      cli:load_defaults({ sources = { 'file1.c' } })
+      assert.same(cli:get_arbitrary_options(), { sources = { 'file1.c' } })
+    end)
   end)
 end)
