@@ -196,7 +196,7 @@ describe("Testing cliargs library parsing commandlines", function()
     end)
 
     it("should bail if the default value is not an empty table", function()
-      assert.is.error(function()
+      assert.error_matches(function()
         cli:add_option("-k", "a key that can be specified multiple times", { "foo" })
       end, "Default argument: expected a")
     end)
