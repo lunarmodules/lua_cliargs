@@ -22,6 +22,7 @@ build = {
    type = "builtin",
    modules = {
       ["cliargs"] = "src/cliargs.lua",
+      ["cliargs.config_loader"] = "src/cliargs/config_loader.lua",
       ["cliargs.core"] = "src/cliargs/core.lua",
       ["cliargs.printer"] = "src/cliargs/printer.lua",
       ["cliargs.utils.disect"] = "src/cliargs/utils/disect.lua",
@@ -29,6 +30,7 @@ build = {
       ["cliargs.utils.lookup"] = "src/cliargs/utils/lookup.lua",
       ["cliargs.utils.shallow_copy"] = "src/cliargs/utils/shallow_copy.lua",
       ["cliargs.utils.split"] = "src/cliargs/utils/split.lua",
+      ["cliargs.utils.trim"] = "src/cliargs/utils/trim.lua",
       ["cliargs.utils.wordwrap"] = "src/cliargs/utils/wordwrap.lua",
    }
 }

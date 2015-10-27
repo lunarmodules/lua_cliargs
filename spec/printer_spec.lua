@@ -6,7 +6,6 @@ describe('printer', function()
 
   before_each(function()
     cli = require("cliargs.core")()
-    cli:set_silent(true)
   end)
 
   describe('#generate_usage', function()

@@ -41,7 +41,6 @@ return function()
   local optional = {}
   local optargument = {maxcount = 0}
   local colsz = { 0, 0 } -- column width, help text. Set to 0 for auto detect
-  local silent = false
   local arbitraries = {}
 
   cli.name = ""
@@ -67,20 +66,6 @@ return function()
   --- @param {string} msg
   ---        The error message.
   local custom_error_handler = nil
-
-  local function on_error(msg)
-    if custom_error_handler then
-      return custom_error_handler(msg, { name = cli.name })
-    end
-
-    local full_msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
-
-    if not silent then
-      cli.printer.print(full_msg)
-    end
-
-    return nil, full_msg
-  end
 
   -- Used internally to add an option
   local function define_option(k, ek, v, label, desc, default, callback)
@@ -208,10 +193,6 @@ return function()
   ---        0 to auto set the total width to 72.
   function cli:set_colsz(key_cols, desc_cols)
     colsz = { key_cols or colsz[1], desc_cols or colsz[2] }
-  end
-
-  function cli:set_silent(in_silent)
-    silent = in_silent
   end
 
   function cli:set_error_handler(handler)
@@ -499,21 +480,39 @@ return function()
     define_option(k, ek, nil, key, desc, default, callback)
   end
 
-  --- Parses the arguments found in #arg and returns a table with the populated values.
-  --- (NOTE: after succesful parsing, the module will delete itself to free resources)
-  --- *Aliases: `parse_args`*
+  --- Parse the process arguments table.
   ---
-  --- ### Parameters
-  --- 1. **arguments**: set this to arg
-  --- 2. **noprint**: set this flag to prevent any information (error or help info) from being printed
-  --- 3. **dump**: set this flag to dump the parsed variables for debugging purposes, alternatively
-  --- set the first option to --__DUMP__ (option with 2 trailing and leading underscores) to dump at runtime.
+  --- @param {table<string>} [arguments=_G.arg]
+  ---        The list of arguments to parse. Defaults to the global `arg` table
+  ---        which contains the arguments the process was started with.
   ---
-  --- ### Returns
-  --- 1. a table containing the keys specified when the arguments were defined along with the parsed values,
-  --- or nil + error message (--help option is considered an error and returns nil + help message)
-  function cli:parse(arguments)
+  --- @param {boolean} [silent=false]
+  ---        Whether to refrain from printing any messages to STDOUT. This will
+  ---        affect the --help option and any parsing errors.
+  ---
+  --- @return {table}
+  ---         A table containing all the arguments, options, flags,
+  ---         and splat arguments that were specified or had a default
+  ---         (where applicable).
+  ---
+  --- @return {array<nil, string>}
+  ---         If a parsing error has occured, note that the --help option is
+  ---         also considered an error.
+  function cli:parse(arguments, silent)
     local dump = nil
+    local function on_error(msg)
+      if custom_error_handler then
+        return custom_error_handler(msg, silent)
+      end
+
+      local full_msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
+
+      if not silent then
+        cli.printer.print(full_msg)
+      end
+
+      return nil, full_msg
+    end
 
     assert(arguments == nil or type(arguments) == "table",
       "expected an argument table to be passed in, " ..
@@ -530,7 +529,7 @@ return function()
     -- has --help or -h ? display the help listing and abort!
     for _, v in pairs(args) do
       if v == "--help" or v == "-h" then
-        return nil, self:print_help()
+        return nil, self:print_help(silent)
       end
     end
 
@@ -700,30 +699,24 @@ return function()
   --- @return {string}
   ---         The USAGE message.
   function cli:print_usage()
-    local msg = cli.printer.generate_usage()
-
-    if not silent then
-      cli.printer.print(msg)
-    end
-
-    return msg
+    cli.printer.print(cli.printer.generate_usage())
   end
 
   --- Prints the HELP information.
   ---
   --- @return {string}
   ---         The HELP message.
-  function cli:print_help()
+  function cli:print_help(silent)
     local msg = ''
 
     msg = msg .. cli.printer.generate_usage() .. '\n'
     msg = msg .. cli.printer.generate_help()
 
-    if not silent then
-      cli.printer.print(msg)
+    if silent == true then
+      return msg
     end
 
-    return msg
+    cli.printer.print(msg)
   end
 
   return cli

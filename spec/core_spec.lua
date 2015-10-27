@@ -18,7 +18,7 @@ describe("cliargs::core", function()
       cli:parse({'--quiet'})
 
       assert.spy(s).called()
-      assert.spy(s).called_with(match.is_string(), match.is_table())
+      assert.spy(s).called_with(match.is_string(), match.is_nil())
     end)
   end)
 
@@ -92,13 +92,9 @@ describe("cliargs::core", function()
       touched = false
     end)
 
-    context('when @noprint is on', function()
-      before_each(function()
-        cli:set_silent(true)
-      end)
-
+    context('when @silent is on', function()
       it("does not print the help listing to STDOUT", function()
-        local res = cli:print_help()
+        local res = cli:print_help(true)
 
         assert.equal(type(res), "string")
         assert.equal(touched, false)
@@ -108,7 +104,7 @@ describe("cliargs::core", function()
         cli:option("ARGUMENT", '...')
 
         local args = { "arg1", "arg2" } -- should fail for too many arguments
-        local res, err = cli:parse(args)
+        local res, err = cli:parse(args, true)
 
         assert.is.equal(nil, res)
         assert.is.equal(type(err), "string")
@@ -121,7 +117,6 @@ describe("cliargs::core", function()
     it('dumps the state and errors out', function()
       stub(cli.printer, 'print')
 
-      cli:set_silent(false)
       cli:set_error_handler(function(msg) error(msg) end)
 
       cli:argument('OUTPUT', '...')
