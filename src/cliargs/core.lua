@@ -55,6 +55,8 @@ return function()
     }
   end)
 
+  -- local defaults = {}
+
   --- @property {function} custom_error_handler
   ---
   --- A function to call when a parsing error has occured (at run-time).
@@ -78,10 +80,13 @@ return function()
   end
 
   -- Used internally to add an option
-  local function really_add_option(k, expanded_key, v, label, desc, default, callback)
+  local function define_option(k, ek, v, label, desc, default, callback)
     local flag = (v == nil) -- no value, so it's a flag
-    local negatable = flag and (expanded_key and expanded_key:find('^%[no%-]') ~= nil)
-    local ek = negatable and expanded_key:sub(6) or expanded_key
+    local negatable = flag and (ek and ek:find('^%[no%-]') ~= nil)
+
+    if negatable then
+      ek = ek:sub(6)
+    end
 
     -- guard against duplicates
     if lookup(k, ek, optional) then
@@ -101,33 +106,73 @@ return function()
       label = label,
       flag = flag,
       negatable = negatable,
-      callback = callback,
-      __display_key = ek or k
+      callback = callback
     }
 
     table.insert(optional, entry)
   end
 
-  local function get_initial_values()
-    local initial_values = {}
+  local function generate_results(cli_values)
+    local results = {}
+    local function collect(entry)
+      local entry_values = {}
+      local _
 
-    for _, entry in ipairs(required) do
-      initial_values[entry] = shallow_copy(entry.default)
-    end
+      for _, item in ipairs(cli_values) do
+        if item.entry == entry then
+          table.insert(entry_values, item.value)
+        end
+      end
 
-    for _, entry in ipairs(optional) do
-      initial_values[entry] = shallow_copy(entry.default)
+      return entry_values
     end
 
     if optargument.key then
-      if optargument.maxcount > 1 then
-        initial_values[optargument] = {}
+      local values = collect(optargument)
+
+      if #values == 0 then
+        values = { optargument.default }
+      end
+
+      if optargument.maxcount == 1 then
+        results[optargument.key] = values[1]
       else
-        initial_values[optargument] = optargument.default
+        results[optargument.key] = values
       end
     end
 
-    return initial_values
+    for _, entry in pairs(required) do
+      results[entry.key] = collect(entry)[1]
+    end
+
+    for _, entry in pairs(optional) do
+      local values = collect(entry)
+      local value
+
+      if #values == 0 then
+        value = entry.default
+      else
+        if type(entry.default) == 'table' then
+          value = values
+        else
+          value = values[#values] -- use the last
+
+          if value == '__NULL__' then
+            value = nil
+          end
+        end
+      end
+
+      if entry.key then
+        results[entry.key] = value
+      end
+
+      if entry.expanded_key then
+        results[entry.expanded_key] = value
+      end
+    end
+
+    return results
   end
 
   -- ------------------------------------------------------------------------ --
@@ -334,7 +379,7 @@ return function()
 
     validate_default_for_option(key, default)
 
-    really_add_option(k, ek, v, key, desc, default, callback)
+    define_option(k, ek, v, key, desc, default, callback)
   end
 
   --- Define a flag argument (on/off). This is a convenience helper for cli.add_opt().
@@ -363,7 +408,7 @@ return function()
       error("A flag type option cannot have a value set: " .. key)
     end
 
-    really_add_option(k, ek, nil, key, desc, default, callback)
+    define_option(k, ek, nil, key, desc, default, callback)
   end
 
   --- Parses the arguments found in #arg and returns a table with the populated values.
@@ -407,7 +452,7 @@ return function()
       table.remove(args, 1)  -- delete it to prevent further parsing
     end
 
-    local values = get_initial_values()
+    local values = {}
     local argument_delimiter_found = false
     local function consume()
       return table.remove(args, 1)
@@ -458,7 +503,9 @@ return function()
             -- want to nullify an option's default value. eg:
             --
             --    --compress=
-            if not curr_opt:find('=') then
+            if curr_opt:find('=') then
+              value = '__NULL__'
+            else
               -- NOTE: this has the potential to be buggy and swallow the next
               -- entry as this entry's value even though that entry may be an
               -- actual argument/option
@@ -475,11 +522,7 @@ return function()
           end
         end
 
-        if type(entry.default) == 'table' then
-          table.insert(values[entry], value)
-        else
-          values[entry] = value
-        end
+        table.insert(values, { entry = entry, value = value })
 
         if entry and entry.callback then
           local altkey = entry.key
@@ -502,13 +545,11 @@ return function()
       else
         argument_cursor = argument_cursor + 1
 
+        local is_splat_value = argument_cursor > #required
+
         -- a splat argument:
-        if not required[argument_cursor] then
-          if optargument.maxcount > 1 then
-            table.insert(values[optargument], curr_opt)
-          else
-            values[optargument] = curr_opt
-          end
+        if is_splat_value then
+          table.insert(values, { entry = optargument, value = curr_opt })
 
           if optargument.callback then
             local status, err = optargument.callback(optargument.key, curr_opt)
@@ -520,7 +561,7 @@ return function()
         else
           local entry = required[argument_cursor]
 
-          values[entry] = curr_opt
+          table.insert(values, { entry = entry, value = curr_opt })
 
           if entry.callback then
             local status, err = entry.callback(entry.key, curr_opt)
@@ -530,6 +571,7 @@ return function()
             end
           end
         end
+
       end
     end
 
@@ -551,31 +593,8 @@ return function()
       end
     end
 
-    -- if necessary set the defaults for the last optional argument here
-    if optargument.maxcount > 1 and #values[optargument] == 0 then
-      values[optargument] = { optargument.default }
-    end
-
     -- populate the results table
-    local results = {}
-
-    if optargument.key then
-      results[optargument.key] = values[optargument]
-    end
-
-    for _, entry in pairs(required) do
-      results[entry.key] = values[entry]
-    end
-
-    for _, entry in pairs(optional) do
-      if entry.key then
-        results[entry.key] = values[entry]
-      end
-
-      if entry.expanded_key then
-        results[entry.expanded_key] = values[entry]
-      end
-    end
+    local results = generate_results(values)
 
     if dump then
       local msg = cli.printer.dump_internal_state(values)
