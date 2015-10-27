@@ -225,6 +225,7 @@ describe('printer', function()
     local original_arg
 
     before_each(function()
+      original_arg = _G['arg']
       _G['arg'] = { 'spec/printer_spec.lua' }
     end)
 

@@ -36,12 +36,16 @@ end
 -- CLI Main --
 -- -------- --
 return function()
+  --- @module
+  ---
+  --- The primary export you receive when you require the library. For example:
+  ---
+  ---     local cli = require 'cliargs'
   local cli = {}
   local required = {}
   local optional = {}
   local optargument = {maxcount = 0}
   local colsz = { 0, 0 } -- column width, help text. Set to 0 for auto detect
-  local arbitraries = {}
 
   cli.name = ""
   cli.description = ""
@@ -56,8 +60,6 @@ return function()
       colsz = colsz
     }
   end)
-
-  -- local defaults = {}
 
   --- @property {function} custom_error_handler
   ---
@@ -224,21 +226,28 @@ return function()
   ---        or expanded option keys, and their values are the new defaults.
   ---
   --- @param {boolean} [strict=false]
-  ---        Turn this on to raise an error if a key that was found in the table
-  ---        could not be mapped to any CLI option.
+  ---        Turn this on to return nil and an error message if a key in the
+  ---        config table could not be mapped to any CLI option.
+  ---
+  --- @return {true}
+  ---         When the new defaults were loaded successfully, or strict was not
+  ---         set.
+  ---
+  --- @return {union<nil, string>}
+  ---         When strict was set and there was an error.
   function cli:load_defaults(config, strict)
     for k, v in pairs(config) do
-      if not self:redefine_default(k, v) then
-        if strict then
-          assert(false, "Unrecognized option with the key '" .. k .. "'")
-        else
-          arbitraries[k] = v
-        end
+      local success = self:redefine_default(k, v)
+
+      if strict and not success then
+        return nil, "Unrecognized option with the key '" .. k .. "'"
       end
     end
+
+    return true
   end
 
-  --- Load default values from a configuration file.
+  --- Read config values from a configuration file.
   ---
   --- @param {string} path
   ---        Absolute file path.
@@ -256,7 +265,7 @@ return function()
   --- @return {true|union<nil, string>}
   ---         Returns true on successful load. Otherwise, nil and an error
   ---         message are returned instead.
-  function cli:load_defaults_from_file(path, format, strict)
+  function cli:read_defaults(path, format)
     if not format then
       format = path:match('%.([^%.]+)$')
     end
@@ -267,47 +276,32 @@ return function()
       return nil, 'Unsupported file format "' .. format .. '"'
     end
 
-    local config, err = config_loader[loader](path)
-
-    if err then
-      return nil, err
-    end
-
-    self:load_defaults(config, strict)
-
-    return true
-  end
-
-  --- When you load configuration files that may contain properties that do not
-  --- map to any CLI option, lua_cliargs will conveniently hold these for you
-  --- in a separate storage which you may access through this API.
-  ---
-  --- This is helpful if a config file contains parameters that are not exposed/
-  --- overridable through the CLI but you still want to access them all the
-  --- same.
-  ---
-  --- Please note that lua_cliargs is not responsible for merging these values
-  --- with the result-set of parsed CLI arguments when you call [#parse](), and
-  --- it is up to you to handle these properties in the manner appropriate to
-  --- your application.
-  ---
-  --- @example
-  ---
-  ---     cli:option('--compress=VALUE', '...', 'lzma')
-  ---     cli:load_defaults({
-  ---       compress = "bz2",
-  ---       sources = { "file1.c", "file2.c" }
-  ---     })
-  ---
-  ---     cli:parse({}) -- { "compress" = "bz2" }
-  ---     cli:get_arbitrary_options() -- { "sources" = { "file1.c", "file2.c" } }
-  function cli:get_arbitrary_options()
-    return arbitraries
+    return config_loader[loader](path)
   end
 
   --- Define a required argument.
   ---
-  --- Required arguments have no special notation and are order-sensitive.
+  ---
+  --- Required arguments do not take a symbol like `-` or `--`, may not have a
+  --- default value, and are parsed in the order they are defined.
+  ---
+  ---
+  --- For example:
+  ---
+  --- ```lua
+  --- cli:argument('INPUT', 'path to the input file')
+  --- cli:argument('OUTPUT', 'path to the output file')
+  --- ```
+  ---
+  --- At run-time, the arguments have to be specified using the following
+  --- notation:
+  ---
+  --- ```bash
+  --- $ ./script.lua ./main.c ./a.out
+  --- ```
+  ---
+  --- If the user does not pass a value to _every_ argument, the parser will
+  --- raise an error.
   ---
   --- @param {string} key
   ---
@@ -320,13 +314,6 @@ return function()
   ---
   --- @param {function} [callback]
   ---        Callback to invoke when this argument is parsed.
-  ---
-  --- @example
-  ---
-  --- The following will parse the argument (if specified) and set its value in
-  --- `args["ROOT"]`:
-  ---
-  ---     cli:argument("ROOT", "path to where root scripts can be found")
   function cli:argument(key, desc, callback)
     assert(type(key) == "string" and type(desc) == "string",
       "Key and description are mandatory arguments (Strings)"
@@ -347,22 +334,54 @@ return function()
     })
   end
 
-  --- Defines an optional argument (or more than one).
-  --- There can be only 1 optional argument, and it has to be the last one on the argumentlist.
-  --- *Note:* the value will be stored in `args[@key]`. The value will be a 'string' if 'maxcount == 1',
-  --- or a table if 'maxcount > 1'
+  --- Defines a "splat" (or catch-all) argument.
   ---
-  --- ### Parameters
-  --- 1. **key**: the argument's "name" that will be displayed to the user
-  --- 2. **desc**: a description of the argument
-  --- 3. **default**: *optional*; specify a default value (the default is nil)
-  --- 4. **maxcount**: *optional*; specify the maximum number of occurences allowed (default is 1)
-  --- 5. **callback**: *optional*; specify a function to call when this argument is parsed (the default is nil)
+  --- This is a special kind of argument that may be specified 0 or more times,
+  --- the values being appended to a list.
   ---
-  --- ### Usage example
-  --- The following will parse the argument (if specified) and set its value in `args["root"]`:
-  --- `cli:add_arg("root", "path to where root scripts can be found", "", 2)`
-  --- The value returned will be a table with at least 1 entry and a maximum of 2 entries
+  --- For example, let's assume our program takes a single output file and works
+  --- on multiple source files:
+  ---
+  --- ```lua
+  --- cli:argument('OUTPUT', 'path to the output file')
+  --- cli:splat('INPUTS', 'the sources to compile', nil, 10) -- up to 10 source files
+  --- ```
+  ---
+  --- At run-time, it could be invoked as such:
+  ---
+  --- ```bash
+  --- $ ./script.lua ./a.out file1.c file2.c main.c
+  --- ```
+  ---
+  --- If you want to make the output optional, you could do something like this:
+  ---
+  --- ```lua
+  --- cli:option('-o, --output=FILE', 'path to the output file', './a.out')
+  --- cli:splat('INPUTS', 'the sources to compile', nil, 10)
+  --- ```
+  ---
+  --- And now we may omit the output file path:
+  ---
+  --- ```bash
+  --- $ ./script.lua file1.c file2.c main.c
+  --- ```
+  ---
+  --- @param {string} key
+  ---        The argument's "name" that will be displayed to the user.
+  ---
+  --- @param {string} desc
+  ---        A description of the argument.
+  ---
+  --- @param {*} [default=nil]
+  ---        A default value.
+  ---
+  --- @param {number} [maxcount=1]
+  ---        The maximum number of occurences allowed.
+  ---
+  --- @param {function} [callback]
+  ---        A function to call **everytime** a value for this argument is
+  ---        parsed.
+  ---
   function cli:splat(key, desc, default, maxcount, callback)
     assert(optargument.key == nil,
       "Only one splat argument may be defined."
@@ -451,14 +470,43 @@ return function()
     define_option(k, ek, v, key, desc, default, callback)
   end
 
-  --- Define a flag argument (on/off). This is a convenience helper for cli.add_opt().
-  --- See cli.add_opt() for more information.
+  --- Define an optional "flag" argument.
   ---
-  --- ### Parameters
-  -- 1. **key**: the argument's key
-  -- 2. **desc**: a description of the argument to be displayed in the help listing
-  -- 3. **default**: *optional*; specify a default value (the default is nil)
-  -- 4. **callback**: *optional*; specify a function to call when this flag is parsed (the default is nil)
+  --- Flags are a special subset of options that can either be `true` or `false`.
+  ---
+  --- For example:
+  --- ```lua
+  --- cli:flag('-q, --quiet', 'Suppress output.', true)
+  --- ```
+  ---
+  --- At run-time:
+  ---
+  --- ```bash
+  --- $ ./script.lua --quiet
+  --- $ ./script.lua -q
+  --- ```
+  ---
+  --- Passing a value to a flag raises an error:
+  ---
+  --- ```bash
+  --- $ ./script.lua --quiet=foo
+  --- $ echo $? # => 1
+  --- ```
+  ---
+  --- Flags may be _negatable_ by prepending `[no-]` to their key:
+  ---
+  --- ```lua
+  --- cli:flag('-c, --[no-]compress', 'whether to compress or not', true)
+  --- ```
+  ---
+  --- Now the user gets to pass `--no-compress` if they want to skip
+  --- compression, or either specify `--compress` explicitly or leave it
+  --- unspecified to use compression.
+  ---
+  --- @param {string} key
+  --- @param {string} desc
+  --- @param {*} default
+  --- @param {function} callback
   function cli:flag(key, desc, default, callback)
     if type(default) == "function" then
       callback = default

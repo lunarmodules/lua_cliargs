@@ -25,6 +25,7 @@ end
 
 exports.trim = function(s)
   local lines = split(s, "\n")
+  local _
 
   if #lines == 0 then
     return s
@@ -33,7 +34,7 @@ exports.trim = function(s)
   local padding = lines[1]:find('%S') or 0
   local buffer = ''
 
-  for index, line in pairs(lines) do
+  for _, line in pairs(lines) do
     buffer = buffer .. line:sub(padding, -1):gsub("%s+$", '') .. "\n"
   end
 

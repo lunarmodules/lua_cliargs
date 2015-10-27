@@ -1,4 +1,4 @@
-local helpers = require 'spec_helper'
+require 'spec_helper'
 local cliargs = require 'cliargs'
 
 describe('cliargs', function()

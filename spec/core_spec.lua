@@ -173,16 +173,20 @@ describe("cliargs::core", function()
   end)
 
   describe('#load_defaults', function()
-    it('works', function()
+    local args, err
+
+    before_each(function()
       cli:option('-c, --compress=VALUE', '...', 'lzma')
       cli:flag('-q, --quiet', '...', false)
+    end)
 
+    it('works', function()
       cli:load_defaults({
         compress = 'bz2',
         quiet = true
       })
 
-      local args, err = cli:parse({})
+      args, err = cli:parse({})
 
       assert.equal(err, nil)
       assert.same(args, {
@@ -193,9 +197,35 @@ describe("cliargs::core", function()
       })
     end)
 
-    it('stores arbitrary options', function()
-      cli:load_defaults({ sources = { 'file1.c' } })
-      assert.same(cli:get_arbitrary_options(), { sources = { 'file1.c' } })
+    context('when @strict is not true', function()
+      it('ignores keys that could not be mapped', function()
+        cli:load_defaults({
+          compress = 'bz2',
+          quiet = true,
+          what = 'woot!'
+        })
+
+        args, err = cli:parse({})
+
+        assert.equal(err, nil)
+        assert.same(args, {
+          c = 'bz2',
+          compress = 'bz2',
+          q = true,
+          quiet = true
+        })
+      end)
+    end)
+
+    context('when @strict is true', function()
+      it('returns an error message if a key could not be mapped', function()
+        args, err = cli:load_defaults({
+          what = 'woot!'
+        }, true)
+
+        assert.equal(args, nil)
+        assert.equal(err, "Unrecognized option with the key 'what'")
+      end)
     end)
   end)
 end)

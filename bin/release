@@ -24,8 +24,7 @@ function confirm {
 
 VERSION=$1
 SRC_FILE="src/cliargs.lua"
-# VERSION=$(grep "version" lua_cliargs-*.rockspec | cut -d' ' -f3 | sed 's/"//g')
-SRC_VERSION=$(grep "_VERSION" src/cliargs.lua | sed -e 's/.*=//' -e 's/.* //' -e 's/"//g')
+SRC_VERSION=$(grep "VERSION" src/cliargs.lua | sed -e 's/.*=//' -e 's/.* //' -e 's/"//g')
 
 NEW_ROCKSPEC="lua_cliargs-${VERSION}.rockspec"
 OLD_ROCKSPEC="lua_cliargs-${SRC_VERSION}.rockspec"

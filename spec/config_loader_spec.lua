@@ -1,7 +1,6 @@
 require 'spec_helper'
-local config_loader = require 'cliargs.config_loader'
 
-odescribe("cliargs.config_loader", function()
+describe("cliargs.config_loader", function()
   local cli, args, err
 
   before_each(function()
@@ -9,7 +8,13 @@ odescribe("cliargs.config_loader", function()
     cli:flag('-q, --quiet', '...', false)
     cli:option('-c, --compress=VALUE', '...', 'lzma')
     cli:option('--config=FILE', '...', nil, function(_, path)
-      cli:load_defaults_from_file(path)
+      local config
+
+      config, err = cli:read_defaults(path)
+
+      if config and not err then
+        cli:load_defaults(config)
+      end
     end)
   end)
 

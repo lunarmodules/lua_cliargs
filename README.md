@@ -18,7 +18,7 @@ See the examples under the `examples/` directory.
 
 ## API
 
-#### cli:argument(key: string, desc: string[, callback: fn])
+#### cli:argument(key: string, desc: string[, callback: fn]) -> nil
 
 Defines a required argument.
 
@@ -39,7 +39,7 @@ $ ./script.lua ./main.c ./a.out
 
 If the user does not pass a value to _every_ argument, the parser will raise an error.
 
-#### cli:option(key: string, desc: string[, default: *, callback: fn])
+#### cli:option(key: string, desc: string[, default: *, callback: fn]) -> nil
 
 Defines an optional argument.
 
@@ -59,7 +59,7 @@ $ ./script.lua --compress=lzma
 $ ./script.lua --compress= # this overrides the default of `gzip` to `nil`
 ```
 
-#### cli:flag(key: string, desc: string[, default: *, callback: fn])
+#### cli:flag(key: string, desc: string[, default: *, callback: fn]) -> nil
 
 Defines an optional "flag" argument.
 
@@ -93,7 +93,7 @@ cli:flag('-c, --[no-]compress', 'whether to compress or not', true)
 
 Now the user gets to pass `--no-compress` if they want to skip compression, or either specify `--compress` explicitly or leave it unspecified to use compression.
 
-#### cli:splat(key: string, desc: string[, default: *, maxcount: number,callback: fn])`
+#### cli:splat(key: string, desc: string[, default: *, maxcount: number, callback: fn]) -> nil
 
 Defines a "splat" (or catch-all) argument.
 
@@ -161,15 +161,15 @@ Prints a subset of the full help-listing showing only the usage/invocation forma
 Usage: cli_example.lua [OPTIONS]  INPUT  [OUTPUT-1 [OUTPUT-2 [...]]]
 ```
 
-#### cli:set_name(name: string)
+#### cli:set_name(name: string) -> nil
 
 Allows you to specify a name for the program which will be used in the help listings and error messages.
 
-#### cli:set_description(desc: string)
+#### cli:set_description(desc: string) -> nil
 
 Allows you to specify a short description of the program to display in the help listing.
 
-#### cli:set_colsz(key_columns: number, desc_columns: number)
+#### cli:set_colsz(key_columns: number, desc_columns: number) -> nil
 
 Specifies the formatting options for the help listings.
 

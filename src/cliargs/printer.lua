@@ -4,9 +4,6 @@ local _
 
 local function create_printer(get_parser_state)
   local printer = {}
-  local function print(msg)
-    return printer.print(msg)
-  end
 
   function printer.print(msg)
     return _G.print(msg)

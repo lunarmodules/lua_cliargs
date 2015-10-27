@@ -1,3 +1,5 @@
+-- luacheck: ignore 212
+
 local core = require('cliargs.core')()
 local unpack = _G.unpack or table.unpack
 
