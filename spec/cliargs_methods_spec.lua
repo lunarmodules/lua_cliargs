@@ -67,20 +67,20 @@ describe("Testing cliargs library methods/functions", function()
       local expected, result
 
       result = cli.wordwrap(text, 10)
-      expected = "123456789\n123456789\n123456789!"
+      expected = { "123456789", "123456789", "123456789!" }
       assert.is.same(result, expected)
 
       -- exact length + 1 overflow
       result = cli.wordwrap(text, 9)
-      expected = "123456789\n123456789\n123456789\n!"
+      expected = { "123456789", "123456789", "123456789", "!" }
       assert.is.same(result, expected)
 
-      result = cli.wordwrap(text, 9, nil, true)
-      expected = "123456789\n123456789\n123456789!"
+      result = cli.wordwrap(text, 9, true)
+      expected = { "123456789", "123456789", "123456789!" }
       assert.is.same(result, expected)
 
       result = cli.wordwrap(text, 8)
-      expected = "12345678\n9\n12345678\n9\n12345678\n9!"
+      expected = { "12345678", "9", "12345678", "9", "12345678", "9!" }
       assert.is.same(result, expected)
     end)
 
