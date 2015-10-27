@@ -13,6 +13,6 @@ branches:
 install:
   - sudo apt-get install luajit
   - sudo apt-get install luarocks
-  - sudo luarocks install busted
+  - sudo luarocks install busted 2.0rc10-1
 
 script: "busted spec"
