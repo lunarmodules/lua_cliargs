@@ -5,12 +5,12 @@ local unpack = _G.unpack or table.unpack
 
 local cli = setmetatable({},{ __index = core })
 
-function cli:parse(arguments, silent, no_cleanup)
-  local out = { core.parse(self, arguments, silent) }
-
+function cli:parse(arguments, no_cleanup)
   if not no_cleanup then
     cli:cleanup()
   end
+
+  local out = { core.parse(self, arguments) }
 
   return unpack(out)
 end

@@ -18,19 +18,28 @@ describe("cliargs::core", function()
       cli:parse({'--quiet'})
 
       assert.spy(s).called()
-      assert.spy(s).called_with(match.is_string(), match.is_nil())
+      assert.spy(s).called_with(match.is_string())
     end)
   end)
 
   describe('#parse', function()
     context('when invoked without the arguments table', function()
+      local global_arg
+
+      before_each(function()
+        global_arg = _G['arg']
+      end)
+
+      after_each(function()
+        _G['arg'] = global_arg
+      end)
+
       it('uses the global _G["arg"] one', function()
         _G["arg"] = {"--quiet"}
 
         cli:option('--quiet', '...')
-        local args = cli:parse()
 
-        assert.equal(args.quiet, true)
+        assert.equal(cli:parse().quiet, true)
       end)
     end)
 
@@ -44,71 +53,44 @@ describe("cliargs::core", function()
       assert.equal(arguments[1], "--quiet")
     end)
 
+    it("generates the help listing but does not print it to STDOUT", function()
+      local res, err = cli:parse({'--help'})
+
+      assert.equal(type(res), "nil")
+      assert.equal(type(err), "string")
+    end)
+
+    it("returns error strings but does not print them to STDOUT", function()
+      local res, err = cli:parse({ "arg1" })
+
+      assert.equal(type(res), "nil")
+      assert.equal(type(err), "string")
+    end)
+
     describe('displaying the help listing', function()
+      local res, err
+
       before_each(function()
         cli:argument('INPUT', '...')
         cli:flag('--quiet', '...')
-        stub(cli, 'print_help')
       end)
 
       after_each(function()
-        assert.stub(cli.print_help).called()
+        assert.equal(type(res), "nil")
+        assert.equal(type(err), "string")
+        assert.equal(err, cli:get_help_message())
       end)
 
       it('works with --help in the beginning', function()
-        helpers.parse(cli, '--help something')
+        res, err = helpers.parse(cli, '--help something')
       end)
 
       it('works with --help in the end of options', function()
-        helpers.parse(cli, '--quiet --help something')
+        res, err = helpers.parse(cli, '--quiet --help something')
       end)
 
       it('works with --help after an argument', function()
-        helpers.parse(cli, '--quiet something --help')
-      end)
-    end)
-  end)
-
-  describe("#parse - the @noprint option", function()
-    local old_print, touched
-
-    setup(function()
-      old_print = print
-
-      local interceptor = function(...)
-        touched = true
-        return old_print(...)
-      end
-
-      _G['print'] = interceptor
-    end)
-
-    teardown(function()
-      _G['print'] = (old_print or print)
-    end)
-
-    before_each(function()
-      cli.silent = true
-      touched = false
-    end)
-
-    context('when @silent is on', function()
-      it("does not print the help listing to STDOUT", function()
-        local res = cli:print_help(true)
-
-        assert.equal(type(res), "string")
-        assert.equal(touched, false)
-      end)
-
-      it("does not print errors to STDOUT", function()
-        cli:option("ARGUMENT", '...')
-
-        local args = { "arg1", "arg2" } -- should fail for too many arguments
-        local res, err = cli:parse(args, true)
-
-        assert.is.equal(nil, res)
-        assert.is.equal(type(err), "string")
-        assert.is.equal(false, touched)
+        res, err = helpers.parse(cli, '--quiet something --help')
       end)
     end)
   end)
@@ -117,16 +99,14 @@ describe("cliargs::core", function()
     it('dumps the state and errors out', function()
       stub(cli.printer, 'print')
 
-      cli:set_error_handler(function(msg) error(msg) end)
-
       cli:argument('OUTPUT', '...')
       cli:splat('INPUTS', '...', nil, 5)
       cli:option('-c, --compress=VALUE', '...')
       cli:flag('-q, --quiet', '...', true)
 
-      assert.error_matches(function()
-        cli:parse({'--__DUMP__', '/tmp/out', '/tmp/in.1', '/tmp/in.2', '/tmp/in.3' })
-      end, 'commandline dump created')
+      local _, err = cli:parse({'--__DUMP__', '/tmp/out', '/tmp/in.1', '/tmp/in.2', '/tmp/in.3' })
+
+      assert.matches('======= Provided command line =============', err)
     end)
   end)
 

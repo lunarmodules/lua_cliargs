@@ -35,7 +35,9 @@ end
 -- -------- --
 -- CLI Main --
 -- -------- --
-return function()
+local create_core, create_command
+
+create_core = function()
   --- @module
   ---
   --- The primary export you receive when you require the library. For example:
@@ -46,6 +48,7 @@ return function()
   local optional = {}
   local optargument = {maxcount = 0}
   local colsz = { 0, 0 } -- column width, help text. Set to 0 for auto detect
+  local commands = {}
 
   cli.name = ""
   cli.description = ""
@@ -54,6 +57,7 @@ return function()
     return {
       name = cli.name,
       description = cli.description,
+      commands = commands,
       required = required,
       optional = optional,
       optargument = optargument,
@@ -68,6 +72,13 @@ return function()
   --- @param {string} msg
   ---        The error message.
   local custom_error_handler = nil
+  local function on_error(msg)
+    if custom_error_handler then
+      return custom_error_handler(msg)
+    end
+
+    return nil, msg
+  end
 
   -- Used internally to add an option
   local function define_option(k, ek, v, label, desc, default, callback)
@@ -147,7 +158,7 @@ return function()
         else
           value = values[#values] -- use the last
 
-          if value == '__NULL__' then
+          if value == '__CLIARGS_NULL__' then
             value = nil
           end
         end
@@ -174,11 +185,15 @@ return function()
   --- Assigns the name of the program which will be used for logging.
   function cli:set_name(in_name)
     cli.name = in_name
+
+    return self
   end
 
   --- Write down a brief, 1-liner description of what the program does.
   function cli:set_description(in_description)
     cli.description = in_description
+
+    return self
   end
 
   --- Sets the amount of space allocated to the argument keys and descriptions
@@ -332,6 +347,8 @@ return function()
       desc = desc,
       callback = callback
     })
+
+    return self
   end
 
   --- Defines a "splat" (or catch-all) argument.
@@ -412,6 +429,8 @@ return function()
       maxcount = maxcount,
       callback = callback
     }
+
+    return self
   end
 
   --- Defines an optional argument.
@@ -468,6 +487,8 @@ return function()
     validate_default_for_option(key, default)
 
     define_option(k, ek, v, key, desc, default, callback)
+
+    return self
   end
 
   --- Define an optional "flag" argument.
@@ -526,6 +547,19 @@ return function()
     end
 
     define_option(k, ek, nil, key, desc, default, callback)
+
+    return self
+  end
+
+  function cli:command(name, desc)
+    local cmd = create_command(name)
+
+    cmd:set_name(cli.name .. ' ' .. name)
+    cmd:set_description(desc)
+
+    table.insert(commands, cmd)
+
+    return cmd
   end
 
   --- Parse the process arguments table.
@@ -533,10 +567,6 @@ return function()
   --- @param {table<string>} [arguments=_G.arg]
   ---        The list of arguments to parse. Defaults to the global `arg` table
   ---        which contains the arguments the process was started with.
-  ---
-  --- @param {boolean} [silent=false]
-  ---        Whether to refrain from printing any messages to STDOUT. This will
-  ---        affect the --help option and any parsing errors.
   ---
   --- @return {table}
   ---         A table containing all the arguments, options, flags,
@@ -546,21 +576,8 @@ return function()
   --- @return {array<nil, string>}
   ---         If a parsing error has occured, note that the --help option is
   ---         also considered an error.
-  function cli:parse(arguments, silent)
+  function cli:parse(arguments)
     local dump = nil
-    local function on_error(msg)
-      if custom_error_handler then
-        return custom_error_handler(msg, silent)
-      end
-
-      local full_msg = cli.name .. ": error: " .. msg .. '; re-run with --help for usage.'
-
-      if not silent then
-        cli.printer.print(full_msg)
-      end
-
-      return nil, full_msg
-    end
 
     assert(arguments == nil or type(arguments) == "table",
       "expected an argument table to be passed in, " ..
@@ -568,18 +585,11 @@ return function()
     )
 
     if not arguments then
-      arguments = _G['arg'] or {}
+      arguments = _G.arg or {}
     end
 
     -- clone args, don't mutate the original set:
     local args = shallow_copy(arguments)
-
-    -- has --help or -h ? display the help listing and abort!
-    for _, v in pairs(args) do
-      if v == "--help" or v == "-h" then
-        return nil, self:print_help(silent)
-      end
-    end
 
     -- starts with --__DUMP__; set dump to true to dump the parsed arguments
     if dump == nil and args[1] and args[1] == "--__DUMP__" then
@@ -591,6 +601,58 @@ return function()
     local argument_delimiter_found = false
     local function consume()
       return table.remove(args, 1)
+    end
+
+    -- fast-forward to locate a command if any and delegate to that
+    for index, opt in ipairs(args) do
+      local command
+
+      for _, cmd in pairs(commands) do
+        if cmd.__key__ == opt then
+          command = cmd
+          break
+        end
+      end
+
+      if command then
+        local command_args = shallow_copy(args)
+        table.remove(command_args, index)
+
+        if command.__action__ then
+          local parsed_command_args, err = command:parse(command_args)
+
+          if err then
+            return on_error(err)
+          end
+
+          return command.__action__(parsed_command_args)
+        elseif command.__file__ then
+          local filename = command.__file__
+
+          if type(filename) == 'function' then
+            filename = filename()
+          end
+
+          local run_command_file = function()
+            _G.arg = command_args
+
+            local res, err = assert(loadfile(filename))()
+
+            _G.arg = args
+
+            return res, err
+          end
+
+          return run_command_file()
+        end
+      end
+    end
+
+    -- has --help or -h ? display the help listing and abort!
+    for _, v in pairs(args) do
+      if v == "--help" or v == "-h" then
+        return nil, self:get_help_message()
+      end
     end
 
     local argument_cursor = 0
@@ -639,7 +701,7 @@ return function()
             --
             --    --compress=
             if curr_opt:find('=') then
-              value = '__NULL__'
+              value = '__CLIARGS_NULL__'
             else
               -- NOTE: this has the potential to be buggy and swallow the next
               -- entry as this entry's value even though that entry may be an
@@ -732,11 +794,7 @@ return function()
     local results = generate_results(values)
 
     if dump then
-      local msg = cli.printer.dump_internal_state(values)
-
-      cli.printer.print(msg)
-
-      return on_error("commandline dump created as requested per '--__DUMP__' option")
+      return on_error(cli.printer.dump_internal_state(values))
     end
 
     return results
@@ -747,25 +805,49 @@ return function()
   --- @return {string}
   ---         The USAGE message.
   function cli:print_usage()
-    cli.printer.print(cli.printer.generate_usage())
+    cli.printer.print(cli:get_usage_message())
+  end
+
+  function cli:get_usage_message()
+    return cli.printer.generate_usage()
+  end
+
+  function cli:get_help_message()
+    local msg = ''
+
+    msg = msg .. cli.printer.generate_usage() .. '\n'
+    msg = msg .. cli.printer.generate_help()
+
+    return msg
   end
 
   --- Prints the HELP information.
   ---
   --- @return {string}
   ---         The HELP message.
-  function cli:print_help(silent)
-    local msg = ''
-
-    msg = msg .. cli.printer.generate_usage() .. '\n'
-    msg = msg .. cli.printer.generate_help()
-
-    if silent == true then
-      return msg
-    end
-
-    cli.printer.print(msg)
+  function cli:print_help()
+    cli.printer.print(cli:get_help_message())
   end
 
   return cli
 end
+
+create_command = function(key)
+  local cmd = create_core()
+
+  cmd.__key__ = key
+
+  function cmd:file(file_path)
+    cmd.__file__ = file_path
+    return cmd
+  end
+
+  function cmd:action(callback)
+    cmd.__action__ = callback
+    return cmd
+  end
+
+  return cmd
+end
+
+return create_core

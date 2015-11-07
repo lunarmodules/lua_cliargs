@@ -13,6 +13,12 @@ local function create_printer(get_parser_state)
     local maxsz = 0
     local state = get_parser_state()
 
+    for _, entry in ipairs(state.commands) do
+      if #entry.__key__ > maxsz then
+        maxsz = #entry.__key__
+      end
+    end
+
     for _,table_name in ipairs({"required", "optional"}) do
       for _, entry in ipairs(state[table_name]) do
         local key = entry.label or entry.key
@@ -89,6 +95,15 @@ local function create_printer(get_parser_state)
     if col2 < 10 then
       col2 = 10
     end
+
+    if #state.commands > 0 then
+      msg = msg .. "\nCOMMANDS: \n"
+
+      for _, entry in ipairs(state.commands) do
+        append(entry.__key__, entry.description or '')
+      end
+    end
+
 
     if state.required[1] or state.optargument.key then
       msg = msg .. "\nARGUMENTS: \n"
