@@ -5,7 +5,6 @@ describe("cliargs - options", function()
 
   before_each(function()
     cli = require("cliargs.core")()
-    cli:set_error_handler(function(msg) error(msg) end)
   end)
 
   describe('defining options', function()
@@ -135,16 +134,14 @@ describe("cliargs - options", function()
 
     context('given an unknown option', function()
       it('bails', function()
-        assert.error_matches(function()
-          helpers.parse(cli, '--asdf=jkl;', true)
-        end, 'unknown')
+        local args, err = helpers.parse(cli, '--asdf=jkl;', true)
+        assert.matches('unknown', err)
       end)
     end)
 
     it('bails if no value was passed', function()
-      assert.error_matches(function()
-        helpers.parse(cli, '-s')
-      end, "option %-s requires a value to be set")
+      local args, err = helpers.parse(cli, '-s')
+      assert.matches("option %-s requires a value to be set", err)
     end)
   end)
 
@@ -177,12 +174,6 @@ describe("cliargs - options", function()
     it('lets me override/reset the default value', function()
       cli:option('--compress=URL', '...', 'lzma')
       assert.equal(helpers.parse(cli, '--compress=').compress, nil)
-    end)
-
-    it('rejects everything else', function()
-      assert.error_matches(function()
-        cli:option('--sources=VALUE', '...', function() end)
-      end, 'expected a string, a number, nil, or {}')
     end)
   end)
 
@@ -228,9 +219,8 @@ describe("cliargs - options", function()
           return nil, ">>> bad argument <<<"
         end)
 
-        assert.error_matches(function()
-          helpers.parse(cli, '-c lzma', true)
-        end, '>>> bad argument <<<')
+        local args, err = helpers.parse(cli, '-c lzma', true)
+        assert.equal('>>> bad argument <<<', err)
       end)
     end)
 

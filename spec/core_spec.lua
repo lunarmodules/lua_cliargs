@@ -7,21 +7,6 @@ describe("cliargs::core", function()
     cli = require("cliargs.core")()
   end)
 
-  describe('#set_error_handler', function()
-    local match = require("luassert.match")
-
-    it('accepts a custom error handler', function()
-      local s = spy.new(function()
-      end)
-
-      cli:set_error_handler(s)
-      cli:parse({'--quiet'})
-
-      assert.spy(s).called()
-      assert.spy(s).called_with(match.is_string())
-    end)
-  end)
-
   describe('#parse', function()
     context('when invoked without the arguments table', function()
       local global_arg
@@ -78,7 +63,7 @@ describe("cliargs::core", function()
       after_each(function()
         assert.equal(type(res), "nil")
         assert.equal(type(err), "string")
-        assert.equal(err, cli:get_help_message())
+        assert.equal(err, cli.printer.generate_help_and_usage())
       end)
 
       it('works with --help in the beginning', function()
@@ -133,22 +118,6 @@ describe("cliargs::core", function()
 
       cli:redefine_default('quiet', true)
       assert.equal(cli:parse({}).quiet, true)
-    end)
-
-    it('validates the new default value for an option', function()
-      cli:option('-c VALUE', '...', 'lzma')
-
-      assert.error_matches(function()
-        cli:redefine_default('c', function() end)
-      end, 'Default argument')
-    end)
-
-    it('validates the new default value for a flag', function()
-      cli:option('-q', '...', true)
-
-      assert.error_matches(function()
-        cli:redefine_default('q', 'break break break')
-      end, 'Default argument')
     end)
   end)
 

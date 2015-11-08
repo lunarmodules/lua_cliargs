@@ -3,7 +3,6 @@ describe("Testing cliargs library parsing commandlines", function()
 
   before_each(function()
     cli = require("cliargs.core")()
-    cli:set_error_handler(function(msg) error(msg) end)
   end)
 
   -- TODO, move to feature specs
@@ -40,9 +39,8 @@ describe("Testing cliargs library parsing commandlines", function()
     it("tests required argument callback returning error", function()
       cli:argument("ARG", "arg description", callback_fail)
 
-      assert.error_matches(function()
-        cli:parse({ "arg_val" })
-      end, 'bad argument for ARG')
+      local args, err = cli:parse({ "arg_val" })
+      assert.matches('bad argument for ARG', err)
     end)
 
     it("tests many required arguments", function()
@@ -70,9 +68,8 @@ describe("Testing cliargs library parsing commandlines", function()
       cli:set_name('myapp')
       cli:splat("OPTARG", "optinoal arg description", nil, 1, callback_fail)
 
-      assert.error_matches(function()
-        cli:parse({ "opt_arg" })
-      end, 'bad argument for OPTARG')
+      local args, err = cli:parse({ "opt_arg" })
+      assert.matches('bad argument for OPTARG', err)
     end)
 
     it("tests many optional arguments", function()

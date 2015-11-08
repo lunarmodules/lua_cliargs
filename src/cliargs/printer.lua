@@ -1,4 +1,5 @@
 local wordwrap = require('cliargs.utils.wordwrap')
+local filter = require('cliargs.utils.filter')
 local MAX_COLS = 72
 local _
 
@@ -12,14 +13,16 @@ local function create_printer(get_parser_state)
   local function get_max_label_length()
     local maxsz = 0
     local state = get_parser_state()
+    local optargument = filter(state.options, 'type', 'splat')[1]
+    local commands = filter(state.options, 'type', 'command')
 
-    for _, entry in ipairs(state.commands) do
+    for _, entry in ipairs(commands) do
       if #entry.__key__ > maxsz then
         maxsz = #entry.__key__
       end
     end
 
-    for _,table_name in ipairs({"required", "optional"}) do
+    for _,table_name in ipairs({"options"}) do
       for _, entry in ipairs(state[table_name]) do
         local key = entry.label or entry.key
 
@@ -29,8 +32,8 @@ local function create_printer(get_parser_state)
       end
     end
 
-    if state.optargument.key and #state.optargument.key > maxsz then
-      maxsz = #state.optargument.key
+    if optargument and #optargument.key > maxsz then
+      maxsz = #optargument.key
     end
 
     return maxsz
@@ -41,27 +44,36 @@ local function create_printer(get_parser_state)
     local state = get_parser_state()
     local msg = "Usage:"
 
+    local required = filter(state.options, 'type', 'argument')
+    local optional = filter(state.options, 'type', 'option')
+    local optargument = filter(state.options, 'type', 'splat')[1]
+
     if #state.name > 0 then
       msg = msg .. ' ' .. tostring(state.name)
     end
 
-    if #state.optional > 0 then
+    if #optional > 0 then
       msg = msg .. " [OPTIONS]"
     end
-    if #state.required > 0 or state.optargument.maxcount > 0 then
+
+    if #required > 0 or optargument then
       msg = msg .. " [--]"
     end
-    if #state.required > 0 then
-      for _,entry in ipairs(state.required) do
+
+    if #required > 0 then
+      for _,entry in ipairs(required) do
         msg = msg .. " " .. entry.key
       end
     end
-    if state.optargument.maxcount == 1 then
-      msg = msg .. " [" .. state.optargument.key .. "]"
-    elseif state.optargument.maxcount == 2 then
-      msg = msg .. " [" .. state.optargument.key .. "-1 [" .. state.optargument.key .. "-2]]"
-    elseif state.optargument.maxcount > 2 then
-      msg = msg .. " [" .. state.optargument.key .. "-1 [" .. state.optargument.key .. "-2 [...]]]"
+
+    if optargument then
+      if optargument.maxcount == 1 then
+        msg = msg .. " [" .. optargument.key .. "]"
+      elseif optargument.maxcount == 2 then
+        msg = msg .. " [" .. optargument.key .. "-1 [" .. optargument.key .. "-2]]"
+      elseif optargument.maxcount > 2 then
+        msg = msg .. " [" .. optargument.key .. "-1 [" .. optargument.key .. "-2 [...]]]"
+      end
     end
 
     return msg
@@ -72,6 +84,10 @@ local function create_printer(get_parser_state)
     local state = get_parser_state()
     local col1 = state.colsz[1]
     local col2 = state.colsz[2]
+    local required = filter(state.options, 'type', 'argument')
+    local optional = filter(state.options, 'type', 'option')
+    local commands = filter(state.options, 'type', 'command')
+    local optargument = filter(state.options, 'type', 'splat')[1]
 
     local function append(label, desc)
       label = "  " .. label .. string.rep(" ", col1 - (#label + 2))
@@ -96,39 +112,41 @@ local function create_printer(get_parser_state)
       col2 = 10
     end
 
-    if #state.commands > 0 then
+    if #commands > 0 then
       msg = msg .. "\nCOMMANDS: \n"
 
-      for _, entry in ipairs(state.commands) do
+      for _, entry in ipairs(commands) do
         append(entry.__key__, entry.description or '')
       end
     end
 
-
-    if state.required[1] or state.optargument.key then
+    if required[1] or optargument then
       msg = msg .. "\nARGUMENTS: \n"
 
-      for _,entry in ipairs(state.required) do
+      for _,entry in ipairs(required) do
         append(entry.key, entry.desc .. " (required)")
       end
     end
 
-    if state.optargument.key then
-      local optarg_desc = ' ' .. state.optargument.desc
+    if optargument then
+      local optarg_desc = ' ' .. optargument.desc
+      local default_value = optargument.maxcount > 1 and
+        optargument.default[1] or
+        optargument.default
 
-      if state.optargument.default then
-        optarg_desc = optarg_desc .. " (optional, default: " .. state.optargument.default .. ")"
+      if #optargument.default > 0 then
+        optarg_desc = optarg_desc .. " (optional, default: " .. default_value[1] .. ")"
       else
         optarg_desc = optarg_desc .. " (optional)"
       end
 
-      append(state.optargument.key, optarg_desc)
+      append(optargument.key, optarg_desc)
     end
 
-    if #state.optional > 0 then
+    if #optional > 0 then
       msg = msg .. "\nOPTIONS: \n"
 
-      for _,entry in ipairs(state.optional) do
+      for _,entry in ipairs(optional) do
         local desc = entry.desc
         if not entry.flag and entry.default and #tostring(entry.default) > 0 then
           local readable_default = type(entry.default) == "table" and "[]" or tostring(entry.default)
@@ -146,6 +164,9 @@ local function create_printer(get_parser_state)
 
   function printer.dump_internal_state(values)
     local state = get_parser_state()
+    local required = filter(state.options, 'type', 'argument')
+    local optional = filter(state.options, 'type', 'option')
+    local optargument = filter(state.options, 'type', 'splat')[1]
     local maxlabel = get_max_label_length()
     local msg = ''
 
@@ -161,8 +182,8 @@ local function create_printer(get_parser_state)
     end
 
     print("\n======= Parsed command line ===============")
-    if #state.required > 0 then print("\nArguments:") end
-    for _, entry in ipairs(state.required) do
+    if #required > 0 then print("\nArguments:") end
+    for _, entry in ipairs(required) do
       print(
         "  " ..
         entry.key .. string.rep(" ", maxlabel + 2 - #entry.key) ..
@@ -172,31 +193,31 @@ local function create_printer(get_parser_state)
       )
     end
 
-    if state.optargument.maxcount > 0 then
+    if optargument then
       print(
         "\nOptional arguments:" ..
-        state.optargument.key ..
+        optargument.key ..
         "; allowed are " ..
-        tostring(state.optargument.maxcount) ..
+        tostring(optargument.maxcount) ..
         " arguments"
       )
 
-      if state.optargument.maxcount == 1 then
+      if optargument.maxcount == 1 then
           print(
-            "  " .. state.optargument.key ..
-            string.rep(" ", maxlabel + 2 - #state.optargument.key) ..
+            "  " .. optargument.key ..
+            string.rep(" ", maxlabel + 2 - #optargument.key) ..
             " => '" ..
-            state.optargument.key ..
+            optargument.key ..
             "'"
           )
       else
-        for i = 1, state.optargument.maxcount do
-          if values[state.optargument] and values[state.optargument][i] then
+        for i = 1, optargument.maxcount do
+          if values[optargument] and values[optargument][i] then
             print(
               "  " .. tostring(i) ..
               string.rep(" ", maxlabel + 2 - #tostring(i)) ..
               " => '" ..
-              tostring(values[state.optargument][i]) ..
+              tostring(values[optargument][i]) ..
               "'"
             )
           end
@@ -204,9 +225,9 @@ local function create_printer(get_parser_state)
       end
     end
 
-    if #state.optional > 0 then print("\nOptional parameters:") end
+    if #optional > 0 then print("\nOptional parameters:") end
     local doubles = {}
-    for _, entry in pairs(state.optional) do
+    for _, entry in pairs(optional) do
       if not doubles[entry] then
         local value = values[entry]
 
@@ -223,6 +244,15 @@ local function create_printer(get_parser_state)
     end
 
     print("\n===========================================\n\n")
+
+    return msg
+  end
+
+  function printer.generate_help_and_usage()
+    local msg = ''
+
+    msg = msg .. printer.generate_usage() .. '\n'
+    msg = msg .. printer.generate_help()
 
     return msg
   end

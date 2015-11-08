@@ -5,7 +5,6 @@ describe("cliargs - splat arguments", function()
 
   before_each(function()
     cli = require("cliargs.core")()
-    cli:set_error_handler(function(msg) error(msg) end)
   end)
 
   describe('defining the splat arg', function()
@@ -85,9 +84,8 @@ describe("cliargs - splat arguments", function()
     it('bails if more values were passed than acceptable', function()
       cli:splat('SPLAT', 'foobar', nil, 2)
 
-      assert.error_matches(function()
-        helpers.parse(cli, 'a b c')
-      end, "bad number of arguments")
+      local args, err = helpers.parse(cli, 'a b c')
+      assert.matches("bad number of arguments", err)
     end)
   end)
 

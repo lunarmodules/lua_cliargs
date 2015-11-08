@@ -2,53 +2,38 @@
 
 local _
 local disect = require('cliargs.utils.disect')
-local disect_argument = require('cliargs.utils.disect_argument')
 local lookup = require('cliargs.utils.lookup')
+local filter = require('cliargs.utils.filter')
 local shallow_copy = require('cliargs.utils.shallow_copy')
 local create_printer = require('cliargs.printer')
 local config_loader = require('cliargs.config_loader')
+local parser = require('cliargs.parser')
+local K = require 'cliargs.constants'
 
 local function is_callable(fn)
   return type(fn) == "function" or (getmetatable(fn) or {}).__call
 end
 
-local function validate_default_for_option(key, default)
-  assert(
-    type(default) == "string"
-    or type(default) == "number"
-    or default == nil
-    or type(default) == "boolean"
-    or type(default) == "table"
-    ,
-    "Default argument for '" .. key ..
-    "' expected a string, a number, nil, or {}, got " .. type(default)
-  )
-end
-
-local function validate_default_for_flag(key, default)
-  assert(default == nil or type(default) == "boolean",
-    "Default argument for '" .. key ..
-    "' expected a boolean or nil, got " .. type(default)
-  )
+local function cast_to_boolean(v)
+  if v == nil then
+    return v
+  else
+    return v and true or false
+  end
 end
 
 -- -------- --
 -- CLI Main --
 -- -------- --
-local create_core, create_command
-
-create_core = function()
+local function create_core()
   --- @module
   ---
   --- The primary export you receive when you require the library. For example:
   ---
   ---     local cli = require 'cliargs'
   local cli = {}
-  local required = {}
-  local optional = {}
-  local optargument = {maxcount = 0}
   local colsz = { 0, 0 } -- column width, help text. Set to 0 for auto detect
-  local commands = {}
+  local options = {}
 
   cli.name = ""
   cli.description = ""
@@ -57,28 +42,10 @@ create_core = function()
     return {
       name = cli.name,
       description = cli.description,
-      commands = commands,
-      required = required,
-      optional = optional,
-      optargument = optargument,
+      options = options,
       colsz = colsz
     }
   end)
-
-  --- @property {function} custom_error_handler
-  ---
-  --- A function to call when a parsing error has occured (at run-time).
-  ---
-  --- @param {string} msg
-  ---        The error message.
-  local custom_error_handler = nil
-  local function on_error(msg)
-    if custom_error_handler then
-      return custom_error_handler(msg)
-    end
-
-    return nil, msg
-  end
 
   -- Used internally to add an option
   local function define_option(k, ek, v, label, desc, default, callback)
@@ -90,16 +57,17 @@ create_core = function()
     end
 
     -- guard against duplicates
-    if lookup(k, ek, optional) then
+    if lookup(k, ek, options) then
       error("Duplicate option: " .. (k or ek) .. ", please rename one of them.")
     end
 
-    if negatable and lookup(nil, "no-"..ek, optional) then
+    if negatable and lookup(nil, "no-"..ek, options) then
       error("Duplicate option: " .. ("no-"..ek) .. ", please rename one of them.")
     end
 
     -- below description of full entry record, nils included for reference
     local entry = {
+      type = K.TYPE_OPTION,
       key = k,
       expanded_key = ek,
       desc = desc,
@@ -110,70 +78,26 @@ create_core = function()
       callback = callback
     }
 
-    table.insert(optional, entry)
+    table.insert(options, entry)
   end
 
-  local function generate_results(cli_values)
-    local results = {}
-    local function collect(entry)
-      local entry_values = {}
-      local _
+  local function define_command_option(key)
+    local cmd = create_core()
 
-      for _, item in ipairs(cli_values) do
-        if item.entry == entry then
-          table.insert(entry_values, item.value)
-        end
-      end
+    cmd.__key__ = key
+    cmd.type = K.TYPE_COMMAND
 
-      return entry_values
+    function cmd:file(file_path)
+      cmd.__file__ = file_path
+      return cmd
     end
 
-    if optargument.key then
-      local values = collect(optargument)
-
-      if #values == 0 then
-        values = { optargument.default }
-      end
-
-      if optargument.maxcount == 1 then
-        results[optargument.key] = values[1]
-      else
-        results[optargument.key] = values
-      end
+    function cmd:action(callback)
+      cmd.__action__ = callback
+      return cmd
     end
 
-    for _, entry in pairs(required) do
-      results[entry.key] = collect(entry)[1]
-    end
-
-    for _, entry in pairs(optional) do
-      local values = collect(entry)
-      local value
-
-      if #values == 0 then
-        value = entry.default
-      else
-        if type(entry.default) == 'table' then
-          value = values
-        else
-          value = values[#values] -- use the last
-
-          if value == '__CLIARGS_NULL__' then
-            value = nil
-          end
-        end
-      end
-
-      if entry.key then
-        results[entry.key] = value
-      end
-
-      if entry.expanded_key then
-        results[entry.expanded_key] = value
-      end
-    end
-
-    return results
+    return cmd
   end
 
   -- ------------------------------------------------------------------------ --
@@ -212,21 +136,15 @@ create_core = function()
     colsz = { key_cols or colsz[1], desc_cols or colsz[2] }
   end
 
-  function cli:set_error_handler(handler)
-    custom_error_handler = handler
-  end
-
   function cli:redefine_default(key, new_default)
-    local entry = optargument.key == key and optargument or lookup(key, key, optional)
+    local entry = lookup(key, key, options)
 
     if not entry then
       return nil
     end
 
     if entry.flag then
-      validate_default_for_flag(key, new_default)
-    else
-      validate_default_for_option(key, new_default)
+      new_default = cast_to_boolean(new_default)
     end
 
     entry.default = shallow_copy(new_default)
@@ -338,11 +256,12 @@ create_core = function()
       "Callback argument must be a function"
     )
 
-    if lookup(key, nil, required) then
+    if lookup(key, key, options) then
       error("Duplicate argument: " .. key .. ", please rename one of them.")
     end
 
-    table.insert(required, {
+    table.insert(options, {
+      type = K.TYPE_ARGUMENT,
       key = key,
       desc = desc,
       callback = callback
@@ -400,7 +319,7 @@ create_core = function()
   ---        parsed.
   ---
   function cli:splat(key, desc, default, maxcount, callback)
-    assert(optargument.key == nil,
+    assert(#filter(options, 'type', K.TYPE_SPLAT) == 0,
       "Only one splat argument may be defined."
     )
 
@@ -422,13 +341,20 @@ create_core = function()
       "Callback argument: expected a function or nil"
     )
 
-    optargument = {
+    local typed_default = default or {}
+
+    if type(typed_default) ~= 'table' then
+      typed_default = { typed_default }
+    end
+
+    table.insert(options, {
+      type = K.TYPE_SPLAT,
       key = key,
       desc = desc,
-      default = default,
+      default = typed_default,
       maxcount = maxcount,
       callback = callback
-    }
+    })
 
     return self
   end
@@ -484,8 +410,6 @@ create_core = function()
       return self:flag(key, desc, default, callback)
     end
 
-    validate_default_for_option(key, default)
-
     define_option(k, ek, v, key, desc, default, callback)
 
     return self
@@ -538,26 +462,24 @@ create_core = function()
       "Key and description are mandatory arguments (Strings)"
     )
 
-    validate_default_for_flag(key, default)
-
     local k, ek, v = disect(key)
 
     if v ~= nil then
       error("A flag type option cannot have a value set: " .. key)
     end
 
-    define_option(k, ek, nil, key, desc, default, callback)
+    define_option(k, ek, nil, key, desc, cast_to_boolean(default), callback)
 
     return self
   end
 
   function cli:command(name, desc)
-    local cmd = create_command(name)
+    local cmd = define_command_option(name)
 
     cmd:set_name(cli.name .. ' ' .. name)
     cmd:set_description(desc)
 
-    table.insert(commands, cmd)
+    table.insert(options, cmd)
 
     return cmd
   end
@@ -577,227 +499,7 @@ create_core = function()
   ---         If a parsing error has occured, note that the --help option is
   ---         also considered an error.
   function cli:parse(arguments)
-    local dump = nil
-
-    assert(arguments == nil or type(arguments) == "table",
-      "expected an argument table to be passed in, " ..
-      "got something of type " .. type(arguments)
-    )
-
-    if not arguments then
-      arguments = _G.arg or {}
-    end
-
-    -- clone args, don't mutate the original set:
-    local args = shallow_copy(arguments)
-
-    -- starts with --__DUMP__; set dump to true to dump the parsed arguments
-    if dump == nil and args[1] and args[1] == "--__DUMP__" then
-      dump = true
-      table.remove(args, 1)  -- delete it to prevent further parsing
-    end
-
-    local values = {}
-    local argument_delimiter_found = false
-    local function consume()
-      return table.remove(args, 1)
-    end
-
-    -- fast-forward to locate a command if any and delegate to that
-    for index, opt in ipairs(args) do
-      local command
-
-      for _, cmd in pairs(commands) do
-        if cmd.__key__ == opt then
-          command = cmd
-          break
-        end
-      end
-
-      if command then
-        local command_args = shallow_copy(args)
-        table.remove(command_args, index)
-
-        if command.__action__ then
-          local parsed_command_args, err = command:parse(command_args)
-
-          if err then
-            return on_error(err)
-          end
-
-          return command.__action__(parsed_command_args)
-        elseif command.__file__ then
-          local filename = command.__file__
-
-          if type(filename) == 'function' then
-            filename = filename()
-          end
-
-          local run_command_file = function()
-            _G.arg = command_args
-
-            local res, err = assert(loadfile(filename))()
-
-            _G.arg = args
-
-            return res, err
-          end
-
-          return run_command_file()
-        end
-      end
-    end
-
-    -- has --help or -h ? display the help listing and abort!
-    for _, v in pairs(args) do
-      if v == "--help" or v == "-h" then
-        return nil, self:get_help_message()
-      end
-    end
-
-    local argument_cursor = 0
-
-    while #args > 0 do
-      local curr_opt = consume()
-      local symbol, key, value, flag_negated = disect_argument(curr_opt)
-
-      -- end-of-options indicator:
-      if curr_opt == "--" then
-        argument_delimiter_found = true
-
-      -- an option:
-      elseif not argument_delimiter_found and symbol then
-        local entry = lookup(
-          symbol == '-' and key or nil,
-          symbol == '--' and key or nil,
-          optional
-        )
-
-        if not key or not entry then
-          local option_type = value and "option" or "flag"
-
-          return on_error("unknown/bad " .. option_type .. ": " .. curr_opt)
-        end
-
-        if flag_negated and not entry.negatable then
-          return on_error("flag '" .. curr_opt .. "' may not be negated using --no-")
-        end
-
-        -- a flag and a value specified? that's an error
-        if entry.flag then
-          if value then
-            return on_error("flag " .. curr_opt .. " does not take a value")
-          end
-
-          value = not flag_negated
-        -- an option:
-        else
-          -- the value might be in the next argument, e.g:
-          --
-          --     --compress lzma
-          if not value then
-            -- if the option contained a = and there's no value, it means they
-            -- want to nullify an option's default value. eg:
-            --
-            --    --compress=
-            if curr_opt:find('=') then
-              value = '__CLIARGS_NULL__'
-            else
-              -- NOTE: this has the potential to be buggy and swallow the next
-              -- entry as this entry's value even though that entry may be an
-              -- actual argument/option
-              --
-              -- this would be a user error and there is no determinate way to
-              -- figure it out because if there's no leading symbol (- or --)
-              -- in that entry it can be an actual argument. :shrug:
-              value = consume()
-
-              if not value then
-                return on_error("option " .. curr_opt .. " requires a value to be set")
-              end
-            end
-          end
-        end
-
-        table.insert(values, { entry = entry, value = value })
-
-        if entry and entry.callback then
-          local altkey = entry.key
-          local status, err
-
-          if key == entry.key then
-            altkey = entry.expanded_key
-          else
-            key = entry.expanded_key
-          end
-
-          status, err = entry.callback(key, value, altkey, curr_opt)
-
-          if status == nil and err then
-            return on_error(err)
-          end
-        end
-
-      -- an argument or a splat argument:
-      else
-        argument_cursor = argument_cursor + 1
-
-        local is_splat_value = argument_cursor > #required
-
-        -- a splat argument:
-        if is_splat_value then
-          table.insert(values, { entry = optargument, value = curr_opt })
-
-          if optargument.callback then
-            local status, err = optargument.callback(optargument.key, curr_opt)
-            if status == nil and err then
-              return on_error(err)
-            end
-          end
-        -- a regular argument:
-        else
-          local entry = required[argument_cursor]
-
-          table.insert(values, { entry = entry, value = curr_opt })
-
-          if entry.callback then
-            local status, err = entry.callback(entry.key, curr_opt)
-
-            if status == nil and err then
-              return on_error(err)
-            end
-          end
-        end
-
-      end
-    end
-
-    local arg_count = argument_cursor
-
-    -- missing any required arguments, or too many?
-    if arg_count < #required or arg_count > #required + optargument.maxcount then
-      if optargument.maxcount > 0 then
-        return on_error(
-          "bad number of arguments: " ..
-          #required .. "-" .. #required + optargument.maxcount ..
-          " argument(s) must be specified, not " .. arg_count
-        )
-      else
-        return on_error(
-          "bad number of arguments: " ..
-          #required .. " argument(s) must be specified, not " .. arg_count
-        )
-      end
-    end
-
-    -- populate the results table
-    local results = generate_results(values)
-
-    if dump then
-      return on_error(cli.printer.dump_internal_state(values))
-    end
-
-    return results
+    return parser(arguments, options, cli.printer)
   end
 
   --- Prints the USAGE message.
@@ -812,42 +514,15 @@ create_core = function()
     return cli.printer.generate_usage()
   end
 
-  function cli:get_help_message()
-    local msg = ''
-
-    msg = msg .. cli.printer.generate_usage() .. '\n'
-    msg = msg .. cli.printer.generate_help()
-
-    return msg
-  end
-
   --- Prints the HELP information.
   ---
   --- @return {string}
   ---         The HELP message.
   function cli:print_help()
-    cli.printer.print(cli:get_help_message())
+    cli.printer.print(cli.printer.generate_help_and_usage())
   end
 
   return cli
-end
-
-create_command = function(key)
-  local cmd = create_core()
-
-  cmd.__key__ = key
-
-  function cmd:file(file_path)
-    cmd.__file__ = file_path
-    return cmd
-  end
-
-  function cmd:action(callback)
-    cmd.__action__ = callback
-    return cmd
-  end
-
-  return cmd
 end
 
 return create_core

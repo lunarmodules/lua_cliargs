@@ -18,5 +18,5 @@ This makes it possible to load run-time defaults from a configuration file, for 
 
 **Other changes**
 
-- a new hook was introduced for installing a custom parse error handler: `cli:set_error_handler(fn: function)`. The default will invoke `error()`.
+- ~~a new hook was introduced for installing a custom parse error handler: `cli:set_error_handler(fn: function)`. The default will invoke `error()`.~~
 - internal code changes and more comprehensive test-coverage
