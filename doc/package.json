@@ -5,8 +5,8 @@
   "main": "tinydoc.conf.js",
 	"private": true,
   "dependencies": {
-    "tinydoc-plugin-lua": "1.0.5",
-    "tinydoc": "3.2.1"
+    "tinydoc-plugin-lua": "1.0.x",
+    "tinydoc": "3.2.x"
   },
   "devDependencies": {},
   "scripts": {
