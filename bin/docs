@@ -18,4 +18,4 @@ npm install
 
 ./node_modules/tinydoc/cli/tinydoc run
 
-[ ! $? ] && echo "Docs compiled successfully. Open doc/compiled/index.html in a browser."
+echo "Docs compiled successfully. Open doc/compiled/index.html in a browser."
