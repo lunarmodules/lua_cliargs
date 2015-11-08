@@ -4,3 +4,5 @@
 /*.rock
 .swp
 /.luacheckcache
+/doc/compiled
+/doc/node_modules

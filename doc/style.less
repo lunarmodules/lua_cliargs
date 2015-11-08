@@ -1,0 +1,61 @@
+@import (reference) "~helpers";
+
+@sidebar-width: 185px;
+@content-width: 960px - @sidebar-width;
+
+body {
+  width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.single-page-layout {
+  &__content {
+    width: @content-width;
+    font-size: 15px;
+
+    &, .doc-content {
+      line-height: 1.6;
+    }
+
+    .root__footer {
+      width: @content-width;
+      margin-left: 0;
+    }
+  }
+
+  .two-column-layout__left {
+    width: @sidebar-width;
+  }
+
+  &__sidebar {
+    font-size: 13px;
+    line-height: 1.6;
+    letter-spacing: 1px;
+
+    ul {
+      list-style: none;
+      padding: 0;
+
+      ol {
+        list-style: none;
+      }
+    }
+  }
+
+  &__home-link {
+    font-size: 1em;
+  }
+}
+
+.schemable({
+  pre, .hljs, .hljs > code {
+    background: @base3;
+    font: 14px Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    line-height: 1.45;
+  }
+
+  code {
+    background: @base2;
+  }
+});

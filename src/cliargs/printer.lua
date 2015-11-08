@@ -1,5 +1,6 @@
 local wordwrap = require('cliargs.utils.wordwrap')
 local filter = require('cliargs.utils.filter')
+local K = require('cliargs.constants')
 local MAX_COLS = 72
 local _
 
@@ -13,8 +14,8 @@ local function create_printer(get_parser_state)
   local function get_max_label_length()
     local maxsz = 0
     local state = get_parser_state()
-    local optargument = filter(state.options, 'type', 'splat')[1]
-    local commands = filter(state.options, 'type', 'command')
+    local optargument = filter(state.options, 'type', K.TYPE_SPLAT)[1]
+    local commands = filter(state.options, 'type', K.TYPE_COMMAND)
 
     for _, entry in ipairs(commands) do
       if #entry.__key__ > maxsz then
@@ -44,9 +45,9 @@ local function create_printer(get_parser_state)
     local state = get_parser_state()
     local msg = "Usage:"
 
-    local required = filter(state.options, 'type', 'argument')
-    local optional = filter(state.options, 'type', 'option')
-    local optargument = filter(state.options, 'type', 'splat')[1]
+    local required = filter(state.options, 'type', K.TYPE_ARGUMENT)
+    local optional = filter(state.options, 'type', K.TYPE_OPTION)
+    local optargument = filter(state.options, 'type', K.TYPE_SPLAT)[1]
 
     if #state.name > 0 then
       msg = msg .. ' ' .. tostring(state.name)
@@ -84,10 +85,10 @@ local function create_printer(get_parser_state)
     local state = get_parser_state()
     local col1 = state.colsz[1]
     local col2 = state.colsz[2]
-    local required = filter(state.options, 'type', 'argument')
-    local optional = filter(state.options, 'type', 'option')
-    local commands = filter(state.options, 'type', 'command')
-    local optargument = filter(state.options, 'type', 'splat')[1]
+    local required = filter(state.options, 'type', K.TYPE_ARGUMENT)
+    local optional = filter(state.options, 'type', K.TYPE_OPTION)
+    local commands = filter(state.options, 'type', K.TYPE_COMMAND)
+    local optargument = filter(state.options, 'type', K.TYPE_SPLAT)[1]
 
     local function append(label, desc)
       label = "  " .. label .. string.rep(" ", col1 - (#label + 2))
@@ -164,9 +165,9 @@ local function create_printer(get_parser_state)
 
   function printer.dump_internal_state(values)
     local state = get_parser_state()
-    local required = filter(state.options, 'type', 'argument')
-    local optional = filter(state.options, 'type', 'option')
-    local optargument = filter(state.options, 'type', 'splat')[1]
+    local required = filter(state.options, 'type', K.TYPE_ARGUMENT)
+    local optional = filter(state.options, 'type', K.TYPE_OPTION)
+    local optargument = filter(state.options, 'type', K.TYPE_SPLAT)[1]
     local maxlabel = get_max_label_length()
     local msg = ''
 
