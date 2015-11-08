@@ -15,8 +15,10 @@ cli
 
 cli:command('log'):file('examples/04_commands--git-log.lua')
 
-local _, err = cli:parse()
+local args, err = cli:parse()
 
-if err then
+if not args and err then
   return print(err)
+elseif args then
+  print('git with no command')
 end

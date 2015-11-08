@@ -18,170 +18,13 @@ See the examples under the `examples/` directory.
 
 ## API
 
-#### cli:argument(key: string, desc: string[, callback: fn]) -> nil
-
-Defines a required argument.
-
-Required arguments do not take a symbol like `-` or `--`, may not have a default value, and are parsed in the order they are defined.
-
-For example:
-
-```lua
-cli:argument('INPUT', 'path to the input file')
-cli:argument('OUTPUT', 'path to the output file')
-```
-
-At run-time, the arguments have to be specified using the following notation:
-
-```bash
-$ ./script.lua ./main.c ./a.out
-```
-
-If the user does not pass a value to _every_ argument, the parser will raise an error.
-
-#### cli:option(key: string, desc: string[, default: *, callback: fn]) -> nil
-
-Defines an optional argument.
-
-Options can be specified in a number of ways on the command-line. As an example, let's assume we have a `compress` option that may be one of `gzip` (default,) `lzma`, or something else:
-
-```lua
-cli:option('-c, --compress=VALUE', 'compression algorithm to use', 'gzip')
-```
-
-At run-time, the option may be specified using any of the following notations:
-
-```bash
-$ ./script.lua -c lzma
-$ ./script.lua -c=lzma
-$ ./script.lua --compress lzma
-$ ./script.lua --compress=lzma
-$ ./script.lua --compress= # this overrides the default of `gzip` to `nil`
-```
-
-#### cli:flag(key: string, desc: string[, default: *, callback: fn]) -> nil
-
-Defines an optional "flag" argument.
-
-Flags are a special subset of options that can either be `true` or `false`. 
-
-For example:
-
-```lua
-cli:flag('-q, --quiet', 'Suppress output.', true)
-```
-
-At run-time:
-
-```bash
-$ ./script.lua --quiet
-$ ./script.lua -q
-```
-
-Passing a value to a flag raises an error:
-
-```bash
-$ ./script.lua --quiet=foo
-$ echo $? # => 1
-```
-
-Flags may be _negatable_ by prepending `[no-]` to their key:
-
-```lua
-cli:flag('-c, --[no-]compress', 'whether to compress or not', true)
-```
-
-Now the user gets to pass `--no-compress` if they want to skip compression, or either specify `--compress` explicitly or leave it unspecified to use compression.
-
-#### cli:splat(key: string, desc: string[, default: *, maxcount: number, callback: fn]) -> nil
-
-Defines a "splat" (or catch-all) argument.
-
-This is a special kind of argument that may be specified 0 or more times, the values being appended to a list.
-
-For example, let's assume our program takes a single output file and works on multiple source files:
-
-```lua
-cli:argument('OUTPUT', 'path to the output file')
-cli:splat('INPUTS', 'the sources to compile', nil, 10) -- up to 10 source files
-```
-
-At run-time, it could be invoked as such:
-
-```bash
-$ ./script.lua ./a.out file1.c file2.c main.c
-```
-
-If you want to make the output optional, you could do something like this:
-
-```lua
-cli:option('-o, --output=FILE', 'path to the output file', './a.out')
-cli:splat('INPUTS', 'the sources to compile', nil, 10)
-```
-
-And now we may omit the output file path:
-
-```bash
-$ ./script.lua file1.c file2.c main.c
-```
-
-#### cli:parse(args: table) -> table
-
-Parses the arguments table. This is the primary routine. The return value is a table containing all the arguments, options, flags, and splat arguments that were specified or had a default (where applicable).
-
-The table keys are the keys you used to define the arguments (both short and expanded notations like `-q` => `q` and `--quiet` => `quiet`).
-
-Example:
-
-```lua
-local args
-args = cli:parse() -- uses the global arguments table
-args = cli:parse({ '--some-option', 'arg' })
-```
-
-**Accessing arguments**
-
-All types of arguments must specify a *key*. In the case of required arguments, the keys are only used in the help listings. However, for optional arguments, they are mandatory (either *--key* or *--extended-key* must be specified, the other is optional).
-
-The `cli:parse()`  method will parse the command line and return a table with results. Accessing argument or option values in this table can be done using the key with the leading dashes omitted (`-` or `--`). When defining an option (or a flag) , you can access it using either key or expanded-key; they'll both be defined.
-
-See the examples for more on this.
-
-#### cli:print_help() -> string
-
-Prints the help listing. This is automatically done if the user specifies `--help` as an argument at run-time.
-
-An example is shown in the help-listing section below.
-
-#### cli:print_usage() -> string
-
-Prints a subset of the full help-listing showing only the usage/invocation format. For example:
-
-```
-Usage: cli_example.lua [OPTIONS]  INPUT  [OUTPUT-1 [OUTPUT-2 [...]]]
-```
-
-#### cli:set_name(name: string) -> nil
-
-Allows you to specify a name for the program which will be used in the help listings and error messages.
-
-#### cli:set_description(desc: string) -> nil
-
-Allows you to specify a short description of the program to display in the help listing.
-
-#### cli:set_colsz(key_columns: number, desc_columns: number) -> nil
-
-Specifies the formatting options for the help listings.
-
-The first argument is how wide, in characters, should the first column that contains the keys/names of the arguments be.
-
-The second argument denotes how wide, in characters, should the second column that contains the argument descriptions be.
-
-By default, these are set to `0` which means cliargs will auto-detect the best column sizes. The description column will be capped to a width of 72 characters.
+See http://lua-cliargs.netlify.com/ for the API docs.
 
 ## Help listings `--help`
 
-A help listing will be automatically generated and accessed using the `--help` argument. You can also force its display in the code using `cli:print_help()`.
+A help listing will be automatically generated and accessed using the `--help` argument. When such an option is encountered, `cli:parse()` will abort and return `nil, string` with the help message; you are free to print it to the screen using `print()` if you want.
+
+You can also force its display in the code using `cli:print_help()`.
 
 This is the result for our example (see `examples/00_general.lua`):
 
@@ -271,8 +114,14 @@ This major version release contains BREAKING API CHANGES. See the UPGRADE guide 
 
 - options can occur anywhere now even after arguments (unless the `--` indicator is specified, then no options are parsed afterwards.) Previously, options were accepted only before arguments.
 - options using the short-key notation can be specified using `=` as a value delimiter as well as a space (e.g. `-c=lzma` and `-c lzma`)
-- the library is now more flexible with option definitions (notations like `-key VALUE` or `--key=VALUE`)
-- `--help` or `-h` will now cause the help listing to be displayed no matter where they are (previously, it only happened if they were the first option)
+- the library is now more flexible with option definitions (notations like `-key VALUE`, `--key=VALUE`, `-k=VALUE` are all treated equally)
+- `--help` or `-h` will now cause the help listing to be displayed no matter where they are. Previously, this only happened if they were supplied as the first option.
+
+**Basic command support**
+
+You may now define commands with custom handlers. A command may be invoked by supplying its name as the first argument (options can still come before or afterwards). lua_cliargs will forward the rest of the options to that command to handle, which can be in a separate file.
+
+See `examples/04_commands--git.lua` for an example.
 
 **Re-defining defaults**
 
@@ -283,9 +132,14 @@ The function for doing this is called `cli:load_defaults().`.
 
 This makes it possible to load run-time defaults from a configuration file, for example.
 
+**Reading configuration files**
+
+`cliargs` now exposes some convenience helpers for loading configuration from files (and a separate hook, `cli:load_defaults()` to inject this config if you want) found in `cli:read_defaults()`. This method takes a file-path and an optional file format and it will parse it for you, provided you have the necessary libraries installed.
+
+See the API docs for using this hook.
+
 **Other changes**
 
-- ~~a new hook was introduced for installing a custom parse error handler: `cli:set_error_handler(fn: function)`. The default will invoke `error()`.~~
 - internal code changes and more comprehensive test-coverage
 
 ### Changes from 2.5.1 to 2.5.2

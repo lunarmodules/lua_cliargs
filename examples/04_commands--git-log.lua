@@ -7,8 +7,9 @@ cli:flag('--[no-]follow', 'Continue listing the history of a file beyond renames
 
 local args, err = cli:parse()
 
-if err then
-  return print(err)
+if not args and err then
+  print(err)
+  os.exit(1)
 end
 
 print("git-log: follow?", args.follow)

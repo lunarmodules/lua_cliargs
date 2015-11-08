@@ -41,10 +41,11 @@ cli:flag("--verbose", "the script output will be very verbose")
 cli:flag('--[no-]ice-cream', 'ice cream, or not', true)
 
 -- Parses from _G['arg']
-local args = cli:parse(arg)
+local args, err = cli:parse(arg)
 
-if not args then
+if not args and err then
   -- something wrong happened and an error was printed
+  print(string.format('%s: %s; re-run with help for usage', cli.name, err))
   os.exit(1)
 elseif not args['ice-cream'] then
   print('kernel panic: NO ICE CREAM?!11')

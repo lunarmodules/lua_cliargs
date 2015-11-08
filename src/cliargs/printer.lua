@@ -25,7 +25,7 @@ local function create_printer(get_parser_state)
 
     for _,table_name in ipairs({"options"}) do
       for _, entry in ipairs(state[table_name]) do
-        local key = entry.label or entry.key
+        local key = entry.label or entry.key or entry.__key__
 
         if #key > maxsz then
           maxsz = #key

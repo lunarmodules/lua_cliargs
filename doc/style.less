@@ -1,38 +1,38 @@
 @import (reference) "~helpers";
 
-@sidebar-width: 185px;
-@content-width: 960px - @sidebar-width;
+@sidebar-width: 225px;
+@content-width: 640px;
+
+html {
+  font-size: 62.5%;
+}
 
 body {
-  width: 960px;
-  margin-left: auto;
-  margin-right: auto;
+  text-rendering: optimizeLegibility;
+  font-smoothing: antialiased;
+  font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size: 14px;
+  letter-spacing: .2px;
+  text-size-adjust: 100%;
 }
 
 .single-page-layout {
   &__content {
     width: @content-width;
-    font-size: 15px;
-
-    &, .doc-content {
-      line-height: 1.6;
-    }
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 1.6rem;
+    line-height: 1.7;
+    padding-bottom: 1em;
 
     .root__footer {
       width: @content-width;
-      margin-left: 0;
+      margin-left: auto;
+      margin-right: auto;
     }
   }
 
-  .two-column-layout__left {
-    width: @sidebar-width;
-  }
-
   &__sidebar {
-    font-size: 13px;
-    line-height: 1.6;
-    letter-spacing: 1px;
-
     ul {
       list-style: none;
       padding: 0;
@@ -48,6 +48,31 @@ body {
   }
 }
 
+.two-column-layout__left {
+  left: 0;
+  font-size: 1.4rem;
+  line-height: 1.3;
+  letter-spacing: 0;
+
+  &:not(&--collapsed) {
+    width: @sidebar-width;
+  }
+
+  .ui-resizable-handle {
+    width: 1px;
+  }
+
+  .lua-browser {
+    &__module {
+      margin-bottom: 1em;
+
+      > .lua-browser__link {
+        line-height: 2;
+      }
+    }
+  }
+}
+
 .schemable({
   pre, .hljs, .hljs > code {
     background: @base3;
@@ -56,6 +81,20 @@ body {
   }
 
   code {
-    background: @base2;
+    background: @code;
+  }
+
+  .two-column-layout__left {
+    a {
+      font-weight: normal;
+    }
+  }
+
+  a.lua-browser__link {
+    color: inherit;
+
+    &:active, &.active {
+      color: @link;
+    }
   }
 });

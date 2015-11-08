@@ -1,6 +1,5 @@
 local cli = require 'cliargs'
 local tablex = require 'pl.tablex' -- we'll need this for merging tables
-local args
 
 cli:option('--config=FILEPATH', 'path to a config file', '.programrc')
 cli:flag('--quiet', 'Do not output anything to STDOUT', false)
@@ -29,7 +28,12 @@ if base_config then
 end
 
 -- now we parse the options like usual:
-args = cli:parse()
+local args, err = cli:parse()
+
+if not args and err then
+  print(err)
+  os.exit(1)
+end
 
 -- finally, let's check if the user passed in a config file using --config:
 if args.config then

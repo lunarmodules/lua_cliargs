@@ -22,10 +22,11 @@ cli:set_name("try_my_version.lua")
 cli:flag("-v, --version", "prints the program's version and exits", print_version)
 
 -- Parses from _G['arg']
-local args = cli:parse()
+local args, err = cli:parse()
 
+-- something wrong happened, we print the error and exit
 if not args then
-  -- something wrong happened and an error was printed
+  print(err)
   os.exit(1)
 end
 

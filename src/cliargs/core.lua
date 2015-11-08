@@ -82,16 +82,32 @@ local function create_core()
   end
 
   local function define_command_option(key)
+    --- @module
+    ---
+    --- This is a special instance of the [cli]() module that you receive when
+    --- you define a new command using [cli#command]().
     local cmd = create_core()
 
     cmd.__key__ = key
     cmd.type = K.TYPE_COMMAND
 
+    --- Specify a file that the command should run. The rest of the arguments
+    --- are forward to that file to process, which is free to use or not use
+    --- lua_cliargs in turn.
+    ---
+    --- @param {string} file_path
+    ---        Absolute file-path to a lua script to execute.
     function cmd:file(file_path)
       cmd.__file__ = file_path
       return cmd
     end
 
+    --- Define a command handler. This callback will be invoked if the command
+    --- argument was supplied by the user at runtime. What you return from this
+    --- callback will be returned to the parent CLI library's parse routine and
+    --- it will return that in turn!
+    ---
+    --- @param {function} callback
     function cmd:action(callback)
       cmd.__action__ = callback
       return cmd
@@ -473,6 +489,21 @@ local function create_core()
     return self
   end
 
+  --- Define a command argument.
+  ---
+  --- @param {string} name
+  ---        The name of the command and the argument that the user has to
+  ---        supply to invoke it.
+  ---
+  --- @param {string} [desc]
+  ---        An optional string to show in the help listing which should
+  ---        describe what the command does. It will be displayed if --help
+  ---        was run on the main program.
+  ---
+  ---
+  --- @return {cmd}
+  ---         Another instance of the CLI library which is scoped to that
+  ---         command.
   function cli:command(name, desc)
     local cmd = define_command_option(name)
 

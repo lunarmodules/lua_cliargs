@@ -6,6 +6,8 @@ exports.layout = 'single-page';
 exports.stylesheet = 'doc/style.less';
 exports.title = 'lua_cliargs';
 exports.scrollSpying = true;
+exports.resizableSidebar = false;
+exports.collapsibleSidebar = true;
 
 exports.plugins = [
   require('tinydoc-plugin-lua')({
