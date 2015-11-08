@@ -6,6 +6,7 @@
 	"private": true,
   "dependencies": {
     "tinydoc-plugin-lua": "1.0.x",
+    "tinydoc-theme-gitbooks": "1.0.x",
     "tinydoc": "3.2.x"
   },
   "devDependencies": {},
