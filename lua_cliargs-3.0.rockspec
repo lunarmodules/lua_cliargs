@@ -1,5 +1,5 @@
 package = "lua_cliargs"
-version = "3.0.rc-1"
+version = "3.0"
 source = {
    url = "git://github.com/amireh/lua_cliargs.git",
    branch = "3.0"

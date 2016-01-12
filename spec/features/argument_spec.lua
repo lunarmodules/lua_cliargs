@@ -45,7 +45,7 @@ describe("cliargs - arguments", function()
     it('works with a single argument', function()
       cli:argument('PATH', 'path to a file')
 
-      local args, err = helpers.parse(cli, '/some/where')
+      local args = helpers.parse(cli, '/some/where')
 
       assert.equal(args.PATH, '/some/where')
     end)
@@ -64,14 +64,14 @@ describe("cliargs - arguments", function()
       cli:argument('INPUT', 'path to the input file')
       cli:argument('OUTPUT', 'path to the output file')
 
-      local args, err = helpers.parse(cli, '/some/where')
+      local _, err = helpers.parse(cli, '/some/where')
       assert.matches('bad number of arguments', err)
     end)
 
     it('bails on too many arguments', function()
       cli:argument('INPUT', 'path to the input file')
 
-      local args, err = helpers.parse(cli, 'foo bar')
+      local _, err = helpers.parse(cli, 'foo bar')
 
       assert.matches('bad number of arguments', err)
     end)

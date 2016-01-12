@@ -84,7 +84,7 @@ describe("cliargs - splat arguments", function()
     it('bails if more values were passed than acceptable', function()
       cli:splat('SPLAT', 'foobar', nil, 2)
 
-      local args, err = helpers.parse(cli, 'a b c')
+      local _, err = helpers.parse(cli, 'a b c')
       assert.matches("bad number of arguments", err)
     end)
   end)

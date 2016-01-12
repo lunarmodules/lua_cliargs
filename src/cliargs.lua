@@ -27,6 +27,6 @@ function cli:cleanup()
   cli = nil
 end
 
-cli.VERSION = "3.0.rc-1"
+cli.VERSION = "3.0"
 
 return cli

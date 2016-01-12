@@ -39,7 +39,7 @@ describe("Testing cliargs library parsing commandlines", function()
     it("tests required argument callback returning error", function()
       cli:argument("ARG", "arg description", callback_fail)
 
-      local args, err = cli:parse({ "arg_val" })
+      local _, err = cli:parse({ "arg_val" })
       assert.matches('bad argument for ARG', err)
     end)
 
@@ -68,7 +68,7 @@ describe("Testing cliargs library parsing commandlines", function()
       cli:set_name('myapp')
       cli:splat("OPTARG", "optinoal arg description", nil, 1, callback_fail)
 
-      local args, err = cli:parse({ "opt_arg" })
+      local _, err = cli:parse({ "opt_arg" })
       assert.matches('bad argument for OPTARG', err)
     end)
 

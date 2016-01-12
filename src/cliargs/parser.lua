@@ -256,8 +256,6 @@ function p.collect_results(cli_values, options)
     else
       return entry_values
     end
-
-    return entry_values
   end
 
   local function write(entry, value)
