@@ -1,8 +1,8 @@
 package = "lua_cliargs"
 version = "3.0-0"
 source = {
-   url = "git://github.com/amireh/lua_cliargs.git",
-   branch = "3.0-0"
+   url = "https://github.com/amireh/lua_cliargs/archive/v3.0-0.tar.gz",
+   dir = "lua_cliargs-3.0-0"
 }
 description = {
    summary = "A command-line argument parser.",
