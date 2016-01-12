@@ -136,7 +136,7 @@ local function create_printer(get_parser_state)
         optargument.default
 
       if #optargument.default > 0 then
-        optarg_desc = optarg_desc .. " (optional, default: " .. default_value[1] .. ")"
+        optarg_desc = optarg_desc .. " (optional, default: " .. tostring(default_value[1]) .. ")"
       else
         optarg_desc = optarg_desc .. " (optional)"
       end
