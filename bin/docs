@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+if [ ! -d "doc" ]; then
+  echo "Must be run from lua_cliargs root"
+  exit 1
+fi
+
+which npm &> /dev/null
+
+if [ $? -ne 0 ]; then
+  echo "You must have npm (node.js) installed."
+  exit 1
+fi
+
+cd doc
+
+npm install
+
+./node_modules/tinydoc/cli/tinydoc run
+
+echo "Docs compiled successfully. Open doc/compiled/index.html in a browser."

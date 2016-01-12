@@ -1,0 +1,11 @@
+return {
+  _all = {
+    coverage = false
+  },
+  default = {
+    coverage = false,
+    verbose = true,
+    ROOT = {"spec"},
+    lpath = "src/?.lua;src/cliargs/?.lua;spec/?.lua;"
+  }
+}

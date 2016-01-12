@@ -14,5 +14,8 @@ install:
   - sudo apt-get install luajit
   - sudo apt-get install luarocks
   - sudo luarocks install busted 2.0rc10-1
+  - sudo luarocks install dkjson
+  - sudo luarocks install yaml
+  - sudo luarocks install inifile
 
 script: "busted spec"

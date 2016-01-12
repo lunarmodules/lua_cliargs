@@ -2,4 +2,7 @@
 /luacov.stats.out
 /.env.local
 /*.rock
-**/.*.swp
+.swp
+/.luacheckcache
+/doc/compiled
+/doc/node_modules

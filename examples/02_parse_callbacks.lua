@@ -12,22 +12,21 @@ Try this file with the following commands lines;
 
 local cli = require "cliargs"
 
-local function print_version(key, value, altkey, opt)
-  -- this is called when the flag -v or --version is set
-  if key == 'version' then
-    print("example.lua: version 1.2.1")
-    os.exit(0)
-  end
+-- this is called when the flag -v or --version is set
+local function print_version()
+  print(cli.name .. ": version 1.2.1")
+  os.exit(0)
 end
 
 cli:set_name("try_my_version.lua")
-cli:add_flag("-v, --version", "prints the program's version and exits", print_version)
+cli:flag("-v, --version", "prints the program's version and exits", print_version)
 
 -- Parses from _G['arg']
-local args = cli:parse()
+local args, err = cli:parse()
 
+-- something wrong happened, we print the error and exit
 if not args then
-  -- something wrong happened and an error was printed
+  print(err)
   os.exit(1)
 end
 
