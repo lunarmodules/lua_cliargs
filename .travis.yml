@@ -23,7 +23,7 @@ install:
   - sudo luarocks install inifile
 
 script:
-  - luacheck .
+  - luacheck examples src spec
   - busted spec
 
 notifications:
