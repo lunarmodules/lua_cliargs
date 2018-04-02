@@ -92,7 +92,7 @@ local function create_printer(get_parser_state)
 
     local function append(label, desc)
       label = "  " .. label .. string.rep(" ", col1 - (#label + 2))
-      desc = wordwrap(desc, col2)   -- word-wrap
+      desc = table.concat(wordwrap(desc, col2), "\n") -- word-wrap
       desc = desc:gsub("\n", "\n" .. string.rep(" ", col1)) -- add padding
 
       msg = msg .. label .. desc .. "\n"
