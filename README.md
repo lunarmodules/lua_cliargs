@@ -106,6 +106,11 @@ Many thanks to everyone who reported bugs, provided fixes, and added entirely ne
 
 ## Changelog
 
+### 3.0-2
+
+- optimized an internal routine responsible for word-wrapping. Thanks to
+  @Tieske, refs GH-47
+
 ### Changes from 2.5.x 3.0
 
 This major version release contains BREAKING API CHANGES. See the UPGRADE guide for help in updating your code to make use of it.
