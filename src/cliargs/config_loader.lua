@@ -70,8 +70,8 @@ return {
   --- example:
   ---
   ---     [cli]
-  ---     quiet=true
-  ---     compress=lzma
+  ---     quiet = true
+  ---     compress = lzma
   ---
   --- The routine will automatically cast boolean values ("true" and "false")
   --- into Lua booleans. You may opt out of this behavior by passing `false`
