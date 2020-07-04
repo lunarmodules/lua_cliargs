@@ -260,7 +260,7 @@ describe("cliargs::core", function()
       local config
 
         -- failing test case for #64 below
-        -- config, err = cli:read_defaults('spec/fixtures/config.ini', 'ini', 'database', false)  
+        -- config, err = cli:read_defaults('spec/fixtures/config.ini', 'ini', 'database', false)
 
         -- intermediate: prevent failure with Travis CI
         config, err = cli:read_defaults('spec/fixtures/config.ini', 'ini', 'database', true)
