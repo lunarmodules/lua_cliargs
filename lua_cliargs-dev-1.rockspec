@@ -1,23 +1,46 @@
-package = "lua_cliargs"
-version = "dev-1"
+local package_name = "lua_cliargs"
+local package_version = "dev"
+local rockspec_revision = "1"
+local github_account_name = "lunarmodules"
+local github_repo_name = package_name
+
+rockspec_format = "3.0"
+package = package_name
+version = package_version .. "-" .. rockspec_revision
+
 source = {
-   url = "git+https://github.com/lunarmodules/lua_cliargs.git",
-   branch = "master"
+   url = "git+https://github.com/" .. github_account_name .. "/" .. github_repo_name .. ".git"
 }
+if package_version == "dev" then source.branch = "master" else source.tag = "v" .. package_version end
+
 description = {
-   summary = "A command-line argument parser.",
+   summary = "A command-line argument parsing module for Lua",
    detailed = [[
       This module adds support for accepting CLI arguments easily using multiple
       notations and argument types.
 
       cliargs allows you to define required, optional, and flag arguments.
    ]],
-   homepage = "https://github.com/amireh/lua_cliargs",
-   license = "MIT <http://opensource.org/licenses/MIT>"
+   homepage = "https://github.com/"..github_account_name.."/"..github_repo_name,
+   issues_url = "https://github.com/"..github_account_name.."/"..github_repo_name.."/issues",
+   license = "MIT"
 }
+
 dependencies = {
    "lua >= 5.1"
 }
+
+test_dependencies = {
+   "busted",
+   "dkjson",
+   "inifile",
+   "yaml",
+}
+
+test = {
+   type = "busted",
+}
+
 build = {
    type = "builtin",
    modules = {
