@@ -1,5 +1,7 @@
 # lua_cliargs
 
+[![Luacheck](https://img.shields.io/github/actions/workflow/status/lunarmodules/lua_cliargs/luacheck.yml?branch=master&label=Luacheck&logo=Lua)](https://github.com/lunarmodules/lua_cliargs/actions?workflow=Luacheck)
+
 cliargs is a command-line argument parser for Lua. It supports several types of arguments:
 
 1. required arguments
