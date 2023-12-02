@@ -1,7 +1,5 @@
 # lua_cliargs
 
-[![travis-ci status](https://secure.travis-ci.org/amireh/lua_cliargs.png)](http://travis-ci.org/#!/amireh/lua_cliargs/builds)
-
 cliargs is a command-line argument parser for Lua. It supports several types of arguments:
 
 1. required arguments
