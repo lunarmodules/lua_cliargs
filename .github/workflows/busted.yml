@@ -28,7 +28,7 @@ jobs:
           luarocks install busted
           luarocks install dkjson
           luarocks install inifile
-          luarocks install yaml
+          ${{ matrix.luaVersion != '5.4' && 'luarocks install yaml' || '' }} # https://github.com/lubyk/yaml/issues/7
 
       - name: Replace system cliargs with self
         run: |

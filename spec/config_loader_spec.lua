@@ -39,9 +39,14 @@ describe("cliargs.config_loader", function()
   end)
 
   describe('#from_yaml', function()
-    it('works', function()
-      args, err = cli:parse({ '--config', 'spec/fixtures/config.yml' })
-    end)
+    -- Because it isn't easy to install on Lua 5.4, some environments can't run this test
+    -- https://github.com/lubyk/yaml/issues/7
+    local hasyaml = pcall(require, "yaml")
+    if hasyaml then
+      it('works', function()
+        args, err = cli:parse({ '--config', 'spec/fixtures/config.yml' })
+      end)
+    end
   end)
 
   describe('#from_lua', function()
