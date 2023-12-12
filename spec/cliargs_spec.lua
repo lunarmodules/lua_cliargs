@@ -1,4 +1,4 @@
-require 'spec_helper'
+dofile("spec/spec_helper.lua")
 local cliargs = require 'cliargs'
 
 describe('cliargs', function()

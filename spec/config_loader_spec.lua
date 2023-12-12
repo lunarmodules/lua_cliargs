@@ -1,4 +1,4 @@
-require 'spec_helper'
+dofile("spec/spec_helper.lua")
 
 describe("cliargs.config_loader", function()
   local cli, args, err

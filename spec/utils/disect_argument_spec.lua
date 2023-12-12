@@ -1,6 +1,5 @@
+dofile("spec/spec_helper.lua")
 local disect_argument = require('cliargs.utils.disect_argument')
-
-require("spec_helper")
 
 describe("utils::disect_argument", function()
   local function assert_disect(pattern, expected)
