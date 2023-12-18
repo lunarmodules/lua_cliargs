@@ -1,6 +1,7 @@
 # lua_cliargs
 
-[![travis-ci status](https://secure.travis-ci.org/amireh/lua_cliargs.png)](http://travis-ci.org/#!/amireh/lua_cliargs/builds)
+[![Luacheck](https://img.shields.io/github/actions/workflow/status/lunarmodules/lua_cliargs/luacheck.yml?branch=master&label=Luacheck&logo=Lua)](https://github.com/lunarmodules/lua_cliargs/actions?workflow=Luacheck)
+[![Busted](https://img.shields.io/github/actions/workflow/status/lunarmodules/lua_cliargs/busted.yml?branch=master&label=Busted&logo=Lua)](https://github.com/lunarmodules/lua_cliargs/actions?workflow=Busted)
 
 cliargs is a command-line argument parser for Lua. It supports several types of arguments:
 
@@ -133,6 +134,11 @@ cli:splat('MY_SPLAT', 'Description', nil, 1)
 
 Also, the library internally had an arbitrary limit of 999 repetitions for the
 splat argument. That limit has been relieved.
+
+### 3.0-2
+
+- optimized an internal routine responsible for word-wrapping. Thanks to
+  @Tieske, refs GH-47
 
 ### Changes from 2.5.x 3.0
 

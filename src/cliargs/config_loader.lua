@@ -119,7 +119,7 @@ return {
   ---
   --- [1] http://doc.lubyk.org/yaml.html
   from_yaml = function(filepath)
-    local src, config, _, err
+    local src, config, err
     local yaml = require 'yaml'
 
     src, err = read_file(filepath)

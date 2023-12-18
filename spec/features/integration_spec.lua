@@ -1,4 +1,4 @@
-local helpers = require "spec_helper"
+local helpers = dofile("spec/spec_helper.lua")
 
 describe("integration: parsing", function()
   local cli

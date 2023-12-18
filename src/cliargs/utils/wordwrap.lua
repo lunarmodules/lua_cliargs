@@ -3,48 +3,34 @@ local split = require('cliargs.utils.split')
 local function buildline(words, size, overflow)
   -- if overflow is set, a word longer than size, will overflow the size
   -- otherwise it will be chopped in line-length pieces
-  local line = ""
-  if string.len(words[1]) > size then
+  local line = {}
+  if #words[1] > size then
     -- word longer than line
     if overflow then
-      line = words[1]
+      line[1] = words[1]
       table.remove(words, 1)
     else
-      line = words[1]:sub(1, size)
+      line[1] = words[1]:sub(1, size)
       words[1] = words[1]:sub(size + 1, -1)
     end
   else
-    while words[1] and (#line + string.len(words[1]) + 1 <= size) or (line == "" and #words[1] == size) do
-      if line == "" then
-        line = words[1]
-      else
-        line = line .. " " .. words[1]
-      end
+    local len = 0
+    while words[1] and (len + #words[1] + 1 <= size) or (len == 0 and #words[1] == size) do
+      line[#line+1] = words[1]
+      len = len + #words[1] + 1
       table.remove(words, 1)
     end
   end
-  return line, words
+  return table.concat(line, " "), words
 end
 
-local function wordwrap(str, size, pad, overflow)
+local function wordwrap(str, size, overflow)
   -- if overflow is set, then words longer than a line will overflow
   -- otherwise, they'll be chopped in pieces
-  pad = pad or 0
-
-  local line
-  local out = ""
-  local padstr = string.rep(" ", pad)
-  local words = split(str, ' ')
-
+  local out, words = {}, split(str, ' ')
   while words[1] do
-    line, words = buildline(words, size, overflow)
-    if out == "" then
-      out = padstr .. line
-    else
-        out = out .. "\n" .. padstr .. line
-    end
+    out[#out+1], words = buildline(words, size, overflow)
   end
-
   return out
 end
 
