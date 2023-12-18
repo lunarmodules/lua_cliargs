@@ -1,4 +1,4 @@
-local helpers = require "spec_helper"
+local helpers = dofile("spec/spec_helper.lua")
 
 describe("cliargs::core", function()
   local cli
@@ -178,7 +178,6 @@ describe("cliargs::core", function()
     end)
   end)
 
-
   describe('#read_defaults_from_ini_file', function()
     local args, err
 
@@ -288,4 +287,5 @@ describe("cliargs::core", function()
       })
     end)
   end)
+
 end)
