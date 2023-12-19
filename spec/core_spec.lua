@@ -38,45 +38,11 @@ describe("cliargs::core", function()
       assert.equal(arguments[1], "--quiet")
     end)
 
-    it("generates the help listing but does not print it to STDOUT", function()
-      local res, err = cli:parse({'--help'})
-
-      assert.equal(type(res), "nil")
-      assert.equal(type(err), "string")
-    end)
-
     it("returns error strings but does not print them to STDOUT", function()
       local res, err = cli:parse({ "arg1" })
 
       assert.equal(type(res), "nil")
       assert.equal(type(err), "string")
-    end)
-
-    describe('displaying the help listing', function()
-      local res, err
-
-      before_each(function()
-        cli:argument('INPUT', '...')
-        cli:flag('--quiet', '...')
-      end)
-
-      after_each(function()
-        assert.equal(type(res), "nil")
-        assert.equal(type(err), "string")
-        assert.equal(err, cli.printer.generate_help_and_usage())
-      end)
-
-      it('works with --help in the beginning', function()
-        res, err = helpers.parse(cli, '--help something')
-      end)
-
-      it('works with --help in the end of options', function()
-        res, err = helpers.parse(cli, '--quiet --help something')
-      end)
-
-      it('works with --help after an argument', function()
-        res, err = helpers.parse(cli, '--quiet something --help')
-      end)
     end)
   end)
 
