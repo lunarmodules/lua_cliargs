@@ -12,15 +12,15 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup ‘lua’
-        uses: leafo/gh-actions-lua@v10
+        uses: leafo/gh-actions-lua@35bcb06abec04ec87df82e08caa84d545348536e # v10
         with:
           luaVersion: ${{ matrix.luaVersion }}
 
       - name: Setup ‘luarocks’
-        uses: leafo/gh-actions-luarocks@v4
+        uses: leafo/gh-actions-luarocks@e65774a6386cb4f24e293dca7fc4ff89165b64c5 # v4
 
       - name: Setup test dependencies
         run: |
