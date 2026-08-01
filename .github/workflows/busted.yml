@@ -2,6 +2,8 @@ name: Busted
 
 on: [ push, pull_request ]
 
+permissions: read-all
+
 jobs:
 
   busted:
@@ -9,18 +11,18 @@ jobs:
       fail-fast: false
       matrix:
         luaVersion: [ "5.4", "5.3", "5.2", "5.1", "luajit" ] # , "luajit-openresty"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup ‘lua’
-        uses: leafo/gh-actions-lua@35bcb06abec04ec87df82e08caa84d545348536e # v10
+        uses: luarocks/gh-actions-lua@fc6f8de246f8c01f6e1a56a1b851143e23370ff3 # v12
         with:
           luaVersion: ${{ matrix.luaVersion }}
 
       - name: Setup ‘luarocks’
-        uses: leafo/gh-actions-luarocks@e65774a6386cb4f24e293dca7fc4ff89165b64c5 # v4
+        uses: luarocks/gh-actions-luarocks@95d2308a0aff36ad31ebadca493ed14853399842 # v7
 
       - name: Setup test dependencies
         run: |
