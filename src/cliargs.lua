@@ -2,6 +2,7 @@
 
 local core = require('cliargs.core')()
 local unpack = _G.unpack or table.unpack -- luacheck: compat
+local pack = table.pack or function(...) return { n = select('#', ...), ... } end -- luacheck: compat
 
 local cli = setmetatable({},{ __index = core })
 
@@ -10,9 +11,12 @@ function cli:parse(arguments, no_cleanup)
     cli:cleanup()
   end
 
-  local out = { core.parse(self, arguments) }
+  -- `#` is undefined for a table with a nil hole (e.g. the `nil, err`
+  -- returned on a parsing error), so use pack/unpack's explicit `n`
+  -- instead of relying on the table's border to reconstruct the count.
+  local out = pack(core.parse(self, arguments))
 
-  return unpack(out)
+  return unpack(out, 1, out.n)
 end
 
 -- Clean up the entire module (unload the scripts) as it's expected to be
