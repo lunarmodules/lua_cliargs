@@ -113,14 +113,14 @@ return {
 
   --- Load configuration from a YAML file.
   ---
-  --- Requires the "yaml"[1] module to be present on the system. Get it with:
+  --- Requires the "lyaml"[1] module to be present on the system. Get it with:
   ---
-  ---     luarocks install yaml
+  ---     luarocks install lyaml
   ---
-  --- [1] http://doc.lubyk.org/yaml.html
+  --- [1] https://github.com/gvvaughan/lyaml
   from_yaml = function(filepath)
-    local src, config, err
-    local yaml = require 'yaml'
+    local src, err
+    local lyaml = require 'lyaml'
 
     src, err = read_file(filepath)
 
@@ -128,12 +128,12 @@ return {
       return nil, err
     end
 
-    config, err = yaml.load(src)
+    local ok, config_or_err = pcall(lyaml.load, src)
 
-    if not config and err then
-      return nil, err
+    if not ok then
+      return nil, config_or_err
     end
 
-    return config
+    return config_or_err
   end
 }
