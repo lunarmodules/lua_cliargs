@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        luaVersion: [ "5.4", "5.3", "5.2", "5.1", "luajit" ] # , "luajit-openresty"
+        luaVersion: [ "5.5", "5.4", "5.3", "5.2", "5.1", "luajit" ] # , "luajit-openresty"
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -30,7 +30,7 @@ jobs:
           luarocks install busted
           luarocks install dkjson
           luarocks install inifile
-          ${{ matrix.luaVersion != '5.4' && 'luarocks install yaml' || '' }} # https://github.com/lubyk/yaml/issues/7
+          luarocks install lyaml
 
       - name: Replace system cliargs with self
         run: |
