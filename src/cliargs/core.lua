@@ -400,10 +400,16 @@ local function create_core()
   ---
   ---        A description for the argument to be shown in --help.
   ---
-  --- @param {bool} [default=nil]
+  --- @param {string|table} [default=nil]
   ---
   ---         A default value to use in case the option was not specified at
   ---         run-time (the default value is nil if you leave this blank.)
+  ---
+  ---         If you pass a **table** (e.g. `{}` or `{ "value1" }`), the
+  ---         option will accept multiple values: each invocation of the flag
+  ---         appends the supplied value to that table.  The pre-populated
+  ---         table entries serve as the default list when the option is never
+  ---         supplied on the command-line.
   ---
   --- @param {function} [callback]
   ---
