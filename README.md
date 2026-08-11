@@ -107,6 +107,10 @@ Many thanks to everyone who reported bugs, provided fixes, and added entirely ne
 
 ## Changelog
 
+### unreleased
+
+- [breaking] the (optional) yaml library has been changed to lyaml which is available for Lua 5.4+. This change is only breaking if you used the yaml library. Ref GH-82.
+
 ### 3.0-2
 
 - optimized an internal routine responsible for word-wrapping. Thanks to
