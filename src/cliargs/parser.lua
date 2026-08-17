@@ -66,17 +66,6 @@ function p.invoke_command(args, options, done)
   return done()
 end
 
-function p.print_help(args, printer, done)
-  -- has --help or -h ? display the help listing and abort!
-  for _, v in pairs(args) do
-    if v == "--help" or v == "-h" then
-      return nil, printer.generate_help_and_usage()
-    end
-  end
-
-  return done()
-end
-
 function p.track_dump_request(args, done)
   -- starts with --__DUMP__; set dump to true to dump the parsed arguments
   if args[1] == "--__DUMP__" then
@@ -300,15 +289,13 @@ return function(arguments, options, printer)
   -- the spiral of DOOM:
   return p.invoke_command(args, options, function()
     return p.track_dump_request(args, function(dump, args_without_dump)
-      return p.print_help(args_without_dump, printer, function()
-        return p.process_arguments(args_without_dump, options, function(values, arg_count)
-          return p.validate(options, arg_count, function()
-            if dump then
-              return nil, printer.dump_internal_state(values)
-            else
-              return p.collect_results(values, options)
-            end
-          end)
+      return p.process_arguments(args_without_dump, options, function(values, arg_count)
+        return p.validate(options, arg_count, function()
+          if dump then
+            return nil, printer.dump_internal_state(values)
+          else
+            return p.collect_results(values, options)
+          end
         end)
       end)
     end)
