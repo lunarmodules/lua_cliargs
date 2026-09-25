@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 if [ ! -d "doc" ]; then
   echo "Must be run from lua_cliargs root"
