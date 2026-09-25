@@ -21,14 +21,10 @@ See the examples under the `examples/` directory.
 
 See http://lua-cliargs.netlify.com/ for the API docs.
 
-## Help listings `--help`
+## Help Listings
 
-A help listing will be automatically generated and accessed using the `--help` argument. When such an option is encountered, `cli:parse()` will abort and return `nil, string` with the help message; you are free to print it to the screen using `print()` if you want.
-
-You can also force its display in the code using `cli:print_help()`.
-
-This is the result for our example (see `examples/00_general.lua`):
-
+The library contains code to automatically generate help and usage text for all of the specified options and flags registered with the library; users should use the `cli:print_help()` function to generate it.
+Here is some sample output of this code (see `examples/00_general.lua` to see where these specific options are defined):
 ```
 Usage: cli_example.lua [OPTIONS]  INPUT  [OUTPUT-1 [OUTPUT-2 [...]]]
 
@@ -45,6 +41,8 @@ OPTIONS:
   -v, --version         prints the program's version and exits
   --verbose             the script output will be very verbose
 ```
+
+This code can be used to specify a `-h/--help` option, see `examples/05_help.lua` for an example of how this can be done.
 
 ## Validations
 
